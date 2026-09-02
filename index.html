@@ -1,0 +1,2006 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recetario y menú familiar</title>
+<style>
+  :root {
+    color-scheme: light;
+    --green-dark: #2f6d3c;
+    --green: #4b8f5c;
+    --green-light: #eaf5ec;
+    --green-lighter: #f4faf5;
+    --orange: #e08a3c;
+    --orange-light: #fdf1e3;
+    --blue: #3d7ea6;
+    --blue-light: #e7f2f7;
+    --text: #263229;
+    --text-soft: #5c6b60;
+    --border: #dbe8de;
+    --bg: #fbfdfb;
+    --card-bg: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.45;
+  }
+  .app { max-width: 1220px; margin: 0 auto; padding: 20px 20px 60px; }
+  header.top {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    margin-bottom: 18px;
+  }
+  header.top h1 { font-size: 22px; margin: 0; color: var(--green-dark); }
+  header.top p { margin: 2px 0 0; color: var(--text-soft); font-size: 13px; }
+  nav.tabs {
+    display: flex; gap: 6px; background: var(--green-light); padding: 4px; border-radius: 10px; margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  nav.tabs button {
+    border: none; background: transparent; padding: 9px 16px; border-radius: 8px; cursor: pointer;
+    font-size: 14px; font-weight: 600; color: var(--green-dark); transition: all .15s;
+  }
+  nav.tabs button.active { background: var(--green-dark); color: #fff; }
+  nav.tabs button:not(.active):hover { background: rgba(75,143,92,0.15); }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  input[type="text"], input[type="number"], select, textarea {
+    border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; font-size: 14px;
+    font-family: inherit; background: #fff; color: var(--text);
+  }
+  .btn {
+    border: none; border-radius: 8px; padding: 9px 16px; font-size: 14px; font-weight: 600; cursor: pointer;
+    background: var(--green-dark); color: #fff; white-space: nowrap;
+  }
+  .btn:hover { background: var(--green); }
+  .btn.secondary { background: #fff; color: var(--green-dark); border: 1px solid var(--green); }
+  .btn.secondary:hover { background: var(--green-light); }
+  .btn.blue { background: var(--blue); }
+  .btn.blue:hover { background: #336a8c; }
+  .btn.small { padding: 5px 10px; font-size: 12px; }
+  .btn.danger { background: #fff; color: #b23; border: 1px solid #e3b6b0; }
+  .btn.danger:hover { background: #fdefee; }
+
+  /* Recetario */
+  .toolbar { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }
+  .search-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  input[type="text"]#searchInput { flex: 1; min-width: 200px; }
+  .filter-group { display: flex; flex-direction: column; gap: 6px; }
+  .filter-group .label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--text-soft); }
+  .chip-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    border: 1px solid var(--border); background: #fff; border-radius: 999px; padding: 6px 13px; font-size: 13px;
+    cursor: pointer; color: var(--text); user-select: none; transition: all .15s; white-space: nowrap;
+  }
+  .chip:hover { border-color: var(--green); }
+  .chip.active { background: var(--green); border-color: var(--green); color: #fff; }
+  .chip.active.cat { background: var(--orange); border-color: var(--orange); }
+  .chip.active.origin { background: var(--blue); border-color: var(--blue); }
+  .count-line { font-size: 13px; color: var(--text-soft); margin: 4px 0 2px; }
+
+  .recipe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .recipe-card {
+    background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .recipe-card h3 { margin: 0; font-size: 15px; color: var(--text); }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 5px; }
+  .tag { font-size: 11px; padding: 3px 8px; border-radius: 999px; font-weight: 600; }
+  .tag.meal { background: var(--green-light); color: var(--green-dark); }
+  .tag.cat { background: var(--orange-light); color: #a8601a; }
+  .tag.origin { background: var(--blue-light); color: var(--blue); }
+  .recipe-card .desc { font-size: 13px; color: var(--text-soft); }
+  .recipe-card .ingredients { font-size: 12px; color: var(--text-soft); }
+  .recipe-card .ingredients b { color: var(--text); }
+  .recipe-card .allergens { font-size: 11.5px; color: #a35b2c; }
+  .recipe-card .recipe-link { font-size: 12.5px; }
+  .recipe-card .recipe-link a { color: var(--blue); text-decoration: none; }
+  .recipe-card .recipe-link a:hover { text-decoration: underline; }
+  .recipe-card .source { font-size: 11px; color: #9aa79f; margin-top: auto; padding-top: 4px; border-top: 1px dashed var(--border); }
+  .recipe-card.custom { border-color: var(--orange); }
+  .recipe-card .card-actions { display: flex; gap: 14px; justify-content: flex-end; margin-top: 2px; padding-top: 6px; border-top: 1px dashed var(--border); }
+  .recipe-card .del { background: none; border: none; color: var(--text-soft); font-size: 11.5px; cursor: pointer; padding: 0; font-weight: 600; }
+  .recipe-card .del:hover { color: var(--green-dark); }
+  .recipe-card .del.remove-style:hover { color: #b23; }
+
+  /* Modal genérico */
+  .modal-backdrop {
+    display: none; position: fixed; inset: 0; background: rgba(20,30,22,0.45); align-items: center; justify-content: center; z-index: 50; padding: 20px; overflow-y: auto;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal {
+    background: #fff; border-radius: 14px; padding: 22px; max-width: 520px; width: 100%; max-height: 90vh; overflow-y: auto; margin: auto;
+  }
+  .modal h2 { margin: 0 0 4px; font-size: 17px; color: var(--green-dark); }
+  .modal .modal-sub { font-size: 12.5px; color: var(--text-soft); margin-bottom: 14px; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12.5px; font-weight: 700; color: var(--text-soft); margin-bottom: 5px; }
+  .field input[type="text"], .field input[type="number"], .field select, .field textarea { width: 100%; }
+  .field textarea { resize: vertical; min-height: 54px; }
+  .field-row { display: flex; gap: 10px; }
+  .field-row .field { flex: 1; }
+  .field.checkbox-field { display: flex; align-items: center; gap: 8px; }
+  .field.checkbox-field label { margin: 0; }
+  .modal .chip-row { margin-top: 2px; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  .modal-actions .spacer { flex: 1; }
+
+  /* Menu mensual */
+  .menu-controls { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+  .menu-controls .left, .menu-controls .right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .week { margin-bottom: 20px; }
+  .week-grid { display: grid; grid-template-columns: repeat(7, minmax(170px, 1fr)); gap: 12px; }
+  .day-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; position: relative; min-height: 90px; }
+  .day-card .day-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 6px; }
+  .day-card .day-head .dow { font-weight: 700; color: var(--green-dark); font-size: 13px; text-transform: uppercase; }
+  .day-card .day-head .num { font-size: 12px; color: var(--text-soft); display:block; }
+  .day-card .edit-btn { border: none; background: var(--green-light); color: var(--green-dark); font-size: 11px; border-radius: 6px; padding: 3px 8px; cursor: pointer; }
+  .day-card .edit-btn:hover { background: var(--green); color: #fff; }
+  .holiday-badge { display: inline-block; font-size: 11px; background: var(--orange-light); color: #a8601a; border-radius: 6px; padding: 3px 7px; font-weight: 700; margin-bottom: 6px; }
+  .meal-block { margin-bottom: 7px; }
+  .meal-block .m-label { font-size: 10.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--orange); margin-bottom: 2px; }
+  .meal-block.comida .m-label { color: var(--green-dark); }
+  .meal-block .m-text { font-size: 12px; color: var(--text); }
+  .meal-block .m-text .item { display: block; }
+  .meal-line { font-size: 13px; line-height: 1.5; color: var(--text); margin-bottom: 6px; white-space: normal; overflow-wrap: break-word; }
+  .meal-line b { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; color: var(--orange); margin-right: 5px; }
+  .meal-line.kids b { color: var(--green-dark); }
+  .meal-line.adults b { color: var(--blue); }
+  .day-cats { font-size: 11.5px; color: var(--text-soft); margin-top: 8px; padding-top: 7px; border-top: 1px dashed var(--border); }
+  .day-cats .tag { font-size: 10.5px; padding: 2px 7px; margin: 3px 4px 0 0; display: inline-block; }
+  .day-card.out { background: transparent; border: none; min-height: 0; }
+  .day-card.blank-day { display: flex; align-items: center; justify-content: center; min-height: 90px; }
+  .day-card.blank-day .add-link { border: none; background: none; color: var(--green); font-size: 12px; cursor: pointer; font-weight: 600; }
+  .day-card.blank-day .add-link:hover { text-decoration: underline; }
+
+  /* Temporada */
+  .season-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+  .season-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .season-card.current { border: 2px solid var(--green); background: var(--green-lighter); }
+  .season-card h3 { margin: 0 0 8px; font-size: 15px; color: var(--green-dark); display: flex; justify-content: space-between; align-items: center;}
+  .season-card h3 .badge { font-size: 10px; background: var(--green); color: #fff; padding: 2px 8px; border-radius: 999px; font-weight: 700; }
+  .season-sub { font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--text-soft); margin: 8px 0 4px; }
+  .season-items { font-size: 12.5px; color: var(--text); line-height: 1.6; }
+
+  /* Lista de la compra */
+  .shop-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 18px; }
+  .shop-group { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
+  .shop-group h3 { margin: 0 0 10px; font-size: 14px; color: var(--green-dark); }
+  .shop-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  .shop-items li { font-size: 13.5px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 5px 0; border-bottom: 1px dashed var(--border); }
+  .shop-items li:last-child { border-bottom: none; }
+  .shop-items li input[type="checkbox"] { width: 16px; height: 16px; flex: 0 0 auto; }
+  .shop-items li.checked span.name { text-decoration: line-through; color: var(--text-soft); }
+  .shop-items li .qty { color: var(--text-soft); font-size: 12px; }
+  .shop-items li .name { flex: 1; min-width: 100px; }
+  .shop-items li select.store-select { font-size: 12px; padding: 4px 6px; border-radius: 6px; max-width: 130px; }
+  .shop-items li .row-actions { display: flex; gap: 2px; flex: 0 0 auto; }
+  .shop-items li .row-actions button { border: none; background: none; cursor: pointer; font-size: 13px; color: var(--text-soft); padding: 2px 5px; }
+  .shop-items li .row-actions button:hover { color: var(--green-dark); }
+  .shop-items li .row-actions button.remove:hover { color: #b23; }
+  .shop-empty { font-size: 13.5px; color: var(--text-soft); padding: 10px 0; }
+
+  /* Congelados */
+  .frozen-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 18px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .frozen-form .field { margin-bottom: 0; }
+  .frozen-table { width: 100%; border-collapse: collapse; }
+  .frozen-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--text-soft); padding: 8px 10px; border-bottom: 2px solid var(--border); }
+  .frozen-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+  .frozen-table tr:hover { background: var(--green-lighter); }
+  .frozen-empty { font-size: 13.5px; color: var(--text-soft); padding: 14px 0; }
+
+  footer.note { margin-top: 30px; font-size: 12px; color: var(--text-soft); text-align: center; }
+
+  @media (max-width: 720px) {
+    .week-grid { grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); }
+  }
+  @media (max-width: 560px) {
+    header.top { flex-direction: column; align-items: flex-start; }
+  }
+
+  /* Impresión / exportar PDF */
+  @media print {
+    .no-print { display: none !important; }
+    .panel { display: none !important; }
+    #panel-menu { display: block !important; }
+    .day-card .edit-btn, .day-card .add-link { display: none !important; }
+    .app { max-width: 100%; padding: 0; }
+    .week-grid { grid-template-columns: repeat(7, 1fr); gap: 6px; }
+    .day-card { border: 1px solid #ccc; padding: 6px 8px; break-inside: avoid; }
+    .meal-block .m-text { font-size: 10.5px; }
+    .meal-line { font-size: 9.5px; }
+    body { background: #fff; }
+  }
+</style>
+</head>
+<body>
+<div id="appLoadingOverlay" style="position:fixed;inset:0;background:#fbfdfb;z-index:999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="font-size:28px;">🌿</div>
+  <div style="color:#5c6b60;font-size:14px;">Cargando recetas desde Google Sheets…</div>
+</div>
+<div class="app">
+  <header class="top">
+    <div>
+      <h1>🌿 Recetario &amp; Menú Familiar</h1>
+      <p>Repositorio de recetas, menú mensual, lista de la compra, congelados y temporada</p>
+    </div>
+  </header>
+  <div id="recipesOfflineBanner" style="display:none;background:#fdf1e3;border:1px solid #e08a3c;color:#a8601a;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;">
+    ⚠️ No se ha podido conectar con la Google Sheet ahora mismo — se está mostrando una copia guardada localmente, que puede estar desactualizada. Los cambios que hagas no se guardarán hasta que se recupere la conexión.
+  </div>
+
+  <nav class="tabs no-print">
+    <button class="tab-btn active" data-tab="recetario">Recetario</button>
+    <button class="tab-btn" data-tab="menu">Menú mensual</button>
+    <button class="tab-btn" data-tab="kids">Menú niños (cole)</button>
+    <button class="tab-btn" data-tab="compra">Lista de la compra</button>
+    <button class="tab-btn" data-tab="congelados">Congelados</button>
+    <button class="tab-btn" data-tab="temporada">Temporada</button>
+  </nav>
+
+  <!-- RECETARIO -->
+  <section class="panel active" id="panel-recetario">
+    <div class="toolbar">
+      <div class="search-row">
+        <input type="text" id="searchInput" placeholder="Buscar receta (ej. merluza, garbanzos, tortilla...)">
+        <button class="btn" id="addRecipeBtn">+ Añadir receta</button>
+        <button class="btn secondary" id="clearFiltersBtn">Limpiar filtros</button>
+      </div>
+      <div class="filter-group">
+        <span class="label">Tipo de comida</span>
+        <div class="chip-row" id="mealFilters"></div>
+      </div>
+      <div class="filter-group">
+        <span class="label">Categoría del alimento</span>
+        <div class="chip-row" id="catFilters"></div>
+      </div>
+      <div class="filter-group">
+        <span class="label">Origen de la receta</span>
+        <div class="chip-row" id="originFilters"></div>
+      </div>
+    </div>
+    <div class="count-line" id="countLine"></div>
+    <div class="recipe-grid" id="recipeGrid"></div>
+  </section>
+
+  <!-- MENU MENSUAL -->
+  <section class="panel" id="panel-menu">
+    <div class="menu-controls no-print">
+      <div class="left">
+        <select id="monthSelect"></select>
+      </div>
+      <div class="right">
+        <button class="btn secondary" id="randomMenuBtn">🎲 Generar menú aleatorio</button>
+        <button class="btn blue" id="exportPdfBtn">🖨️ Exportar a PDF</button>
+      </div>
+    </div>
+    <div id="monthContent"></div>
+  </section>
+
+  <!-- MENU NIÑOS (verificación) -->
+  <section class="panel" id="panel-kids">
+    <div class="menu-controls no-print">
+      <div class="left">
+        <select id="kidsMonthSelect"></select>
+      </div>
+      <div class="right">
+        <button class="btn secondary" id="newMonthBtn">📤 Subir nuevo menú</button>
+      </div>
+    </div>
+    <div class="menu-note no-print" style="background:var(--green-light); border-radius:8px; padding:10px 14px; font-size:12.5px; color:var(--text-soft); margin-bottom:16px;">
+      📋 Vista completa del menú del colegio (solo comida de los niños), sin resumir, para comprobar que coincide con el menú que compartes cada mes. Se edita desde aquí o desde "Menú mensual" — es el mismo dato.
+    </div>
+    <div id="kidsMonthContent"></div>
+  </section>
+
+  <!-- LISTA DE LA COMPRA -->
+  <section class="panel" id="panel-compra">
+    <div class="shop-controls no-print">
+      <select id="shopMonthSelect"></select>
+      <select id="shopWeekSelect"></select>
+      <select id="shopDaySelect"></select>
+    </div>
+    <div class="filter-group no-print" style="margin-bottom:14px;">
+      <span class="label">Agrupar por</span>
+      <div class="chip-row" id="shopGroupChips"></div>
+    </div>
+    <div class="frozen-form no-print" style="margin-bottom:18px;">
+      <div class="field">
+        <label>Producto</label>
+        <input type="text" id="shopAddName" placeholder="Ej. Chocolate 85%">
+      </div>
+      <div class="field">
+        <label>Cantidad / nota</label>
+        <input type="text" id="shopAddQty" placeholder="Ej. 1 tableta" style="width:150px;">
+      </div>
+      <div class="field">
+        <label>Supermercado</label>
+        <select id="shopAddStore" style="width:150px;"></select>
+      </div>
+      <button class="btn" id="shopAddBtn">+ Añadir producto</button>
+    </div>
+    <div id="shopContent"></div>
+  </section>
+
+  <!-- CONGELADOS -->
+  <section class="panel" id="panel-congelados">
+    <div class="frozen-form">
+      <div class="field">
+        <label>Alimento</label>
+        <input type="text" id="frozenName" placeholder="Ej. Croquetas de jamón">
+      </div>
+      <div class="field">
+        <label>Cantidad</label>
+        <input type="text" id="frozenQty" placeholder="Ej. 12 uds / 1 bandeja" style="width:150px;">
+      </div>
+      <div class="field">
+        <label>Fecha de congelación</label>
+        <input type="text" id="frozenDate" placeholder="Ej. 10/08/2026" style="width:140px;">
+      </div>
+      <button class="btn" id="addFrozenBtn">+ Añadir</button>
+    </div>
+    <div id="frozenContent"></div>
+  </section>
+
+  <!-- TEMPORADA -->
+  <section class="panel" id="panel-temporada">
+    <div class="season-grid" id="seasonGrid"></div>
+  </section>
+
+  <footer class="note no-print">Recetas, menú, lista de la compra y congelados se guardan en vuestra Google Sheet compartida — podéis editarlos también directamente ahí, y los cambios de cualquiera de los dos se ven en ambos dispositivos.</footer>
+</div>
+
+<!-- Modal añadir receta -->
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal">
+    <h2 id="recipeModalTitle">Añadir receta</h2>
+    <div class="field">
+      <label>Nombre de la receta</label>
+      <input type="text" id="newName" placeholder="Ej. Crema de calabacín">
+    </div>
+    <div class="field">
+      <label>Nombre corto (opcional, para el calendario resumido de "Menú mensual")</label>
+      <input type="text" id="newShort" placeholder="Ej. Crema de verduras / Ensalada / Cocido">
+    </div>
+    <div class="field">
+      <label>Tipo de comida (elige una o varias)</label>
+      <div class="chip-row" id="newMealChips"></div>
+    </div>
+    <div class="field">
+      <label>Categoría del alimento (elige una o varias)</label>
+      <div class="chip-row" id="newCatChips"></div>
+    </div>
+    <div class="field">
+      <label>Descripción / preparación</label>
+      <textarea id="newDesc" placeholder="Breve preparación"></textarea>
+    </div>
+    <div class="field">
+      <label>Ingredientes (separados por coma, para la lista de la compra)</label>
+      <input type="text" id="newIngredients" placeholder="Ej. Calabacín, Cebolla, Patata">
+    </div>
+    <div class="field">
+      <label>Alérgenos (opcional, separados por coma)</label>
+      <input type="text" id="newAllergens" placeholder="Ej. Gluten, Huevo">
+    </div>
+    <div class="field">
+      <label>Enlace a la receta original (opcional, ej. Instagram, blog...)</label>
+      <input type="text" id="newUrl" placeholder="https://...">
+    </div>
+    <div class="modal-actions">
+      <button class="btn secondary" id="cancelModal">Cancelar</button>
+      <button class="btn" id="saveRecipe">Guardar receta</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal editar día -->
+<div class="modal-backdrop" id="dayModalBackdrop">
+  <div class="modal">
+    <h2 id="dayModalTitle">Editar día</h2>
+    <div class="modal-sub">Escribe el plato o elige una receta del repositorio (autocompletado).</div>
+    <div class="field checkbox-field">
+      <input type="checkbox" id="dayHoliday">
+      <label for="dayHoliday">Día festivo / sin colegio</label>
+    </div>
+    <div class="field" id="holidayNameField" style="display:none;">
+      <label>Nombre del festivo (opcional)</label>
+      <input type="text" id="dayHolidayName" placeholder="Ej. Fiesta local">
+    </div>
+    <div class="field">
+      <label>Desayuno (familia)</label>
+      <input type="text" id="dayDesayuno" list="recipeNamesList">
+    </div>
+    <div class="modal-sub" style="margin:14px 0 6px; font-weight:700; color:var(--green-dark);">🍽️ Comida — Niños (cole)</div>
+    <div class="field-row">
+      <div class="field">
+        <label>Primero</label>
+        <input type="text" id="dayPrimero" list="recipeNamesList">
+      </div>
+      <div class="field">
+        <label>Segundo</label>
+        <input type="text" id="daySegundo" list="recipeNamesList">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Guarnición</label>
+        <input type="text" id="dayGuarnicion" list="recipeNamesList">
+      </div>
+      <div class="field">
+        <label>Postre</label>
+        <input type="text" id="dayPostre" list="recipeNamesList">
+      </div>
+    </div>
+    <div class="modal-sub" style="margin:14px 0 6px; font-weight:700; color:var(--blue);">🍽️ Comida — Adultos</div>
+    <div class="field-row">
+      <div class="field">
+        <label>Primero</label>
+        <input type="text" id="dayPrimeroAd" list="recipeNamesList">
+      </div>
+      <div class="field">
+        <label>Segundo</label>
+        <input type="text" id="daySegundoAd" list="recipeNamesList">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Guarnición</label>
+        <input type="text" id="dayGuarnicionAd" list="recipeNamesList">
+      </div>
+      <div class="field">
+        <label>Postre</label>
+        <input type="text" id="dayPostreAd" list="recipeNamesList">
+      </div>
+    </div>
+    <div class="field" style="margin-top:14px;">
+      <label>Cena (familia)</label>
+      <input type="text" id="dayCena" list="recipeNamesList">
+    </div>
+    <datalist id="recipeNamesList"></datalist>
+    <div class="modal-actions">
+      <button class="btn danger" id="clearDayBtn">Vaciar día</button>
+      <span class="spacer"></span>
+      <button class="btn secondary" id="cancelDayModal">Cancelar</button>
+      <button class="btn" id="saveDayBtn">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal nuevo mes -->
+<div class="modal-backdrop" id="newMonthBackdrop">
+  <div class="modal">
+    <h2>Subir / crear nuevo menú mensual</h2>
+    <div class="modal-sub">Crea el mes en blanco y rellena cada día con el botón "Editar" de la tarjeta, o pégame el PDF/foto del menú del colegio en el chat y te lo relleno yo aquí mismo.</div>
+    <div class="field-row">
+      <div class="field">
+        <label>Mes</label>
+        <select id="newMonthSelect"></select>
+      </div>
+      <div class="field">
+        <label>Año</label>
+        <input type="number" id="newMonthYear" value="2026">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn secondary" id="cancelNewMonth">Cancelar</button>
+      <button class="btn" id="createNewMonth">Crear mes en blanco</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal editar producto de la compra -->
+<div class="modal-backdrop" id="shopEditBackdrop">
+  <div class="modal">
+    <h2>Editar producto</h2>
+    <div class="field">
+      <label>Producto</label>
+      <input type="text" id="shopEditName">
+    </div>
+    <div class="field">
+      <label>Cantidad / nota</label>
+      <input type="text" id="shopEditQty">
+    </div>
+    <div class="field">
+      <label>Supermercado</label>
+      <select id="shopEditStore"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn danger" id="shopEditDelete">Eliminar</button>
+      <span class="spacer"></span>
+      <button class="btn secondary" id="shopEditCancel">Cancelar</button>
+      <button class="btn" id="shopEditSave">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------------------------------------------------------------
+   CONSTANTES
+--------------------------------------------------------------- */
+const MEAL_TYPES = ["Desayuno", "Comida", "Merienda", "Cena"];
+const CATEGORIES = ["Verdura", "Fruta", "Legumbre", "Cereal", "Proteína animal (carne)", "Proteína animal (pescado/marisco)", "Huevo", "Lácteo"];
+// Deduce una categoría de origen corta a partir del campo "source" de la receta.
+// Si el origen incluye una cuenta (p. ej. "Instagram · @realfooding"), se usa esa
+// cuenta como origen (@realfooding), para poder filtrar por la cuenta concreta.
+function originOf(r) {
+  const s = (r && r.source) ? r.source.trim() : "";
+  if (!s) return "Añadida por ti";
+  if (s.startsWith("Menú escolar")) return "Menú escolar";
+  if (s.startsWith("Sugerencia")) return "Sugerencia";
+  const handleMatch = s.match(/@[\w.]+/);
+  if (handleMatch) return handleMatch[0];
+  return s;
+}
+// Lista dinámica de orígenes presentes en el recetario actual, para los chips de filtro.
+// Orden: Menú escolar, Sugerencia, luego cuentas/otros orígenes (alfabético), y "Añadida por ti" al final.
+function getAllOrigins() {
+  const present = new Set(recipesStore.map(r => originOf(r)));
+  const priority = ["Menú escolar", "Sugerencia"];
+  const rest = Array.from(present).filter(o => !priority.includes(o) && o !== "Añadida por ti").sort();
+  const ordered = priority.filter(o => present.has(o)).concat(rest);
+  if (present.has("Añadida por ti")) ordered.push("Añadida por ti");
+  return ordered;
+}
+const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const DOW_NAMES = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
+
+const STORES = ["Mercadona","Bonarea","Aldi","Lidl","BM","Frutería"];
+
+/* ---------------------------------------------------------------
+   RECETAS BASE
+--------------------------------------------------------------- */
+const BASE_RECIPES = [
+  {name:"Arroz con salsa de tomate", meals:["Comida"], cats:["Cereal"], desc:"Arroz blanco con salsa de tomate casera.", ingredients:["Arroz","Tomate triturado","Cebolla","Ajo","Aceite de oliva"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Rabas de calamar", meals:["Comida"], cats:["Proteína animal (pescado/marisco)"], desc:"Calamar rebozado y frito.", ingredients:["Calamar","Harina","Huevo","Aceite de oliva","Limón"], allergens:["Gluten","Molusco"], source:"Menú escolar · abril 2026"},
+  {name:"Verduras horneadas", meals:["Comida","Cena"], cats:["Verdura"], desc:"Mezcla de verduras de temporada al horno.", ingredients:["Calabacín","Berenjena","Pimiento","Cebolla","Aceite de oliva"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Sopa de cocido con fideos integrales ECO", short:"Cocido", meals:["Comida"], cats:["Cereal"], desc:"Caldo de cocido con fideos integrales ecológicos.", ingredients:["Caldo de cocido","Fideos integrales"], allergens:["Gluten"], source:"Menú escolar · abril 2026"},
+  {name:"Cocido completo (garbanzos, ternera, pollo y cerdo)", short:"Cocido", meals:["Comida"], cats:["Legumbre","Proteína animal (carne)"], desc:"Garbanzos estofados con ternera, pollo y cerdo.", ingredients:["Garbanzos","Ternera","Pollo","Cerdo","Zanahoria","Patata"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Repollo y zanahoria", short:"Cocido", meals:["Comida","Cena"], cats:["Verdura"], desc:"Repollo y zanahoria rehogados.", ingredients:["Repollo","Zanahoria","Aceite de oliva","Ajo"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Crema de verduras (calabacín, acelga y zanahoria)", meals:["Comida","Cena"], cats:["Verdura"], desc:"Crema suave de calabacín, acelga y zanahoria.", ingredients:["Calabacín","Acelga","Zanahoria","Patata","Cebolla"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Tortilla de patata", meals:["Comida","Cena"], cats:["Huevo","Verdura"], desc:"Tortilla tradicional de patata.", ingredients:["Patata","Huevo","Cebolla","Aceite de oliva"], allergens:["Huevo"], source:"Menú escolar · abril 2026"},
+  {name:"Ensalada de lechuga, zanahoria y aceitunas verdes", meals:["Comida","Cena"], cats:["Verdura"], desc:"Ensalada fresca con aceitunas verdes.", ingredients:["Lechuga","Zanahoria","Aceitunas verdes","Aceite de oliva"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Alubias blancas estofadas (pimiento y zanahoria)", meals:["Comida"], cats:["Legumbre"], desc:"Alubias blancas guisadas con pimiento y zanahoria.", ingredients:["Alubias blancas","Pimiento","Zanahoria","Cebolla","Tomate"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Atún con salsa de tomate", meals:["Comida","Cena"], cats:["Proteína animal (pescado/marisco)"], desc:"Atún fresco cocinado en salsa de tomate casera.", ingredients:["Atún","Tomate triturado","Cebolla","Ajo"], allergens:["Pescado"], source:"Menú escolar · abril 2026"},
+  {name:"Ensalada de lechuga", meals:["Comida","Cena"], cats:["Verdura"], desc:"Lechuga fresca aliñada.", ingredients:["Lechuga","Aceite de oliva","Vinagre"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Yogur sabor", meals:["Comida","Merienda","Cena"], cats:["Lácteo"], desc:"Yogur de sabores como postre o merienda.", ingredients:["Yogur"], allergens:["Lácteos"], source:"Menú escolar · abril 2026"},
+  {name:"Sopa de estrellas", meals:["Comida"], cats:["Cereal"], desc:"Caldo con pasta de estrellas.", ingredients:["Caldo","Pasta de estrellas"], allergens:["Gluten"], source:"Menú escolar · abril 2026"},
+  {name:"Cinta de lomo fresca al ajillo", meals:["Comida","Cena"], cats:["Proteína animal (carne)"], desc:"Cinta de lomo de cerdo al ajillo.", ingredients:["Cinta de lomo de cerdo","Ajo","Perejil","Aceite de oliva"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Ensalada de lechuga y zanahoria", meals:["Comida","Cena"], cats:["Verdura"], desc:"Ensalada sencilla de lechuga y zanahoria rallada.", ingredients:["Lechuga","Zanahoria"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Alubias pintas con arroz integral", meals:["Comida"], cats:["Legumbre","Cereal"], desc:"Alubias pintas guisadas con arroz integral.", ingredients:["Alubias pintas","Arroz integral","Cebolla","Pimiento"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Merluza al papillot", meals:["Comida","Cena"], cats:["Proteína animal (pescado/marisco)"], desc:"Merluza cocinada al papillote con verduras.", ingredients:["Merluza","Limón","Perejil","Zanahoria","Puerro"], allergens:["Pescado"], source:"Menú escolar · abril 2026"},
+  {name:"Ensalada de lechuga, tomate y cebolla", meals:["Comida","Cena"], cats:["Verdura"], desc:"Ensalada mixta clásica.", ingredients:["Lechuga","Tomate","Cebolla"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Crema de calabaza ECO", meals:["Comida","Cena"], cats:["Verdura"], desc:"Crema de calabaza ecológica.", ingredients:["Calabaza","Patata","Cebolla","Puerro"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Ragout de pavo en salsa de verduras", meals:["Comida","Cena"], cats:["Proteína animal (carne)","Verdura"], desc:"Pavo guisado con zanahoria y pimiento.", ingredients:["Pavo","Zanahoria","Pimiento","Tomate","Cebolla"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Patatas dado", meals:["Comida","Cena"], cats:["Verdura"], desc:"Patatas cortadas en dados, cocidas o salteadas.", ingredients:["Patata","Aceite de oliva"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Lentejas estofadas (zanahoria y pimiento verde)", meals:["Comida"], cats:["Legumbre"], desc:"Lentejas guisadas con verduras.", ingredients:["Lentejas","Zanahoria","Pimiento verde","Cebolla","Patata"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Tacos de rape en salsa", meals:["Comida","Cena"], cats:["Proteína animal (pescado/marisco)"], desc:"Rape en dados cocinado en salsa.", ingredients:["Rape","Tomate","Ajo","Cebolla"], allergens:["Pescado"], source:"Menú escolar · abril 2026"},
+  {name:"Verduras variadas", meals:["Comida","Cena"], cats:["Verdura"], desc:"Guarnición de verduras variadas de temporada.", ingredients:["Zanahoria","Calabacín","Judía verde","Pimiento"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Arroz hortelano (judía verde, calabacín y zanahoria)", meals:["Comida"], cats:["Cereal","Verdura"], desc:"Arroz con verduras salteadas.", ingredients:["Arroz","Judía verde","Calabacín","Zanahoria"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Revuelto de huevo con champiñón", meals:["Comida","Cena"], cats:["Huevo","Verdura"], desc:"Huevo revuelto con champiñón.", ingredients:["Huevo","Champiñón","Ajo","Aceite de oliva"], allergens:["Huevo"], source:"Menú escolar · abril 2026"},
+  {name:"Ensalada de lechuga y maíz", meals:["Comida","Cena"], cats:["Verdura"], desc:"Ensalada de lechuga con maíz dulce.", ingredients:["Lechuga","Maíz dulce"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Macarrones con salsa de calabaza ECO", meals:["Comida"], cats:["Cereal","Verdura"], desc:"Macarrones con salsa de calabaza ecológica.", ingredients:["Macarrones","Calabaza","Cebolla","Nata o leche"], allergens:["Gluten"], source:"Menú escolar · abril 2026"},
+  {name:"Boquerones a la andaluza", meals:["Comida","Cena"], cats:["Proteína animal (pescado/marisco)"], desc:"Boquerones enharinados y fritos.", ingredients:["Boquerones","Harina","Aceite de oliva","Limón"], allergens:["Pescado","Gluten"], source:"Menú escolar · abril 2026"},
+  {name:"Ensalada de lechuga y tomate", meals:["Comida","Cena"], cats:["Verdura"], desc:"Ensalada clásica de lechuga y tomate.", ingredients:["Lechuga","Tomate"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Crema de guisantes", meals:["Comida","Cena"], cats:["Legumbre","Verdura"], desc:"Crema suave de guisantes.", ingredients:["Guisantes","Patata","Cebolla","Puerro"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Tortilla de calabacín y patata", meals:["Comida","Cena"], cats:["Huevo","Verdura"], desc:"Tortilla de calabacín y patata.", ingredients:["Calabacín","Patata","Huevo","Cebolla"], allergens:["Huevo"], source:"Menú escolar · abril 2026"},
+  {name:"Ensalada de lechuga, pepino y zanahoria", meals:["Comida","Cena"], cats:["Verdura"], desc:"Ensalada fresca de temporada.", ingredients:["Lechuga","Pepino","Zanahoria"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Paella Valenciana", meals:["Comida"], cats:["Cereal","Proteína animal (carne)"], desc:"Arroz con pollo, conejo y verdura de temporada.", ingredients:["Arroz","Pollo","Conejo","Judía verde","Garrofón","Tomate","Azafrán"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Merluza al ajillo", meals:["Comida","Cena"], cats:["Proteína animal (pescado/marisco)"], desc:"Merluza en salsa de ajo y perejil.", ingredients:["Merluza","Ajo","Guindilla","Aceite de oliva"], allergens:["Pescado"], source:"Menú escolar · abril 2026"},
+  {name:"Menestra de verduras rehogadas (guisante y judía verde)", meals:["Comida","Cena"], cats:["Verdura","Legumbre"], desc:"Menestra de verduras salteadas.", ingredients:["Guisante","Judía verde","Zanahoria","Alcachofa"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Filete de pollo al chilindrón", meals:["Comida","Cena"], cats:["Proteína animal (carne)"], desc:"Pollo guisado con pimientos.", ingredients:["Pollo","Pimiento rojo","Pimiento verde","Tomate","Cebolla"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Zanahoria baby", meals:["Comida","Cena"], cats:["Verdura"], desc:"Zanahoria baby cocida o salteada.", ingredients:["Zanahoria baby","Aceite de oliva"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Pisto de verduras", meals:["Comida","Cena"], cats:["Verdura"], desc:"Pisto tradicional de verduras.", ingredients:["Calabacín","Pimiento","Cebolla","Tomate","Berenjena"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Cazuelita de garbanzos con champiñón y comino", meals:["Comida"], cats:["Legumbre","Verdura"], desc:"Garbanzos guisados con champiñón y comino.", ingredients:["Garbanzos","Champiñón","Comino","Ajo"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Arroz integral", meals:["Comida","Cena"], cats:["Cereal"], desc:"Arroz integral simple como guarnición.", ingredients:["Arroz integral"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Lentejas hortelana con verduras", meals:["Comida"], cats:["Legumbre","Verdura"], desc:"Lentejas guisadas con verduras variadas.", ingredients:["Lentejas","Zanahoria","Puerro","Pimiento"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Pastel de carne casero con puré de patata gratinado", meals:["Comida","Cena"], cats:["Proteína animal (carne)","Verdura"], desc:"Pastel de carne con puré de patata gratinado.", ingredients:["Carne picada","Patata","Leche","Queso rallado","Cebolla"], allergens:["Lácteos"], source:"Menú escolar · abril 2026"},
+  {name:"Patatas estofadas con verduras (judía verde y pimiento)", meals:["Comida","Cena"], cats:["Verdura"], desc:"Patatas guisadas con verduras.", ingredients:["Patata","Judía verde","Pimiento","Zanahoria"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Tortilla francesa", meals:["Comida","Cena"], cats:["Huevo"], desc:"Tortilla francesa sencilla.", ingredients:["Huevo"], allergens:["Huevo"], source:"Menú escolar · abril 2026"},
+  {name:"Ensalada de lechuga, tomate y aceitunas", meals:["Comida","Cena"], cats:["Verdura"], desc:"Ensalada con aceitunas.", ingredients:["Lechuga","Tomate","Aceitunas"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Arroz murciano", meals:["Comida"], cats:["Cereal","Verdura"], desc:"Arroz con verduras al estilo murciano.", ingredients:["Arroz","Pimiento","Tomate","Alcachofa"], allergens:[], source:"Menú escolar · abril 2026"},
+  {name:"Merluza en salsa marinera (gambas y mejillones)", meals:["Comida","Cena"], cats:["Proteína animal (pescado/marisco)"], desc:"Merluza en salsa marinera con gambas y mejillones.", ingredients:["Merluza","Gambas","Mejillones","Tomate","Ajo"], allergens:["Pescado","Crustáceos","Molusco"], source:"Menú escolar · abril 2026"},
+
+  {name:"Leche con cereales integrales y fruta", meals:["Desayuno"], cats:["Lácteo","Cereal","Fruta"], desc:"Leche, cereales integrales sin azúcar añadido y una pieza de fruta.", ingredients:["Leche","Cereales integrales","Fruta de temporada"], allergens:["Lácteos","Gluten"], source:"Sugerencia · desayuno saludable"},
+  {name:"Yogur natural con fruta y pan integral", meals:["Desayuno"], cats:["Lácteo","Fruta","Cereal"], desc:"Yogur natural, fruta troceada y pan integral con aceite de oliva.", ingredients:["Yogur natural","Fruta de temporada","Pan integral","Aceite de oliva"], allergens:["Lácteos","Gluten"], source:"Sugerencia · desayuno saludable"},
+  {name:"Tostada integral con tomate y aceite de oliva", meals:["Desayuno"], cats:["Cereal","Verdura"], desc:"Pan integral con tomate fresco rallado y aceite de oliva, con zumo de fruta natural.", ingredients:["Pan integral","Tomate","Aceite de oliva"], allergens:["Gluten"], source:"Sugerencia · desayuno saludable"},
+  {name:"Cuajada o requesón con fruta y galletas integrales", meals:["Desayuno"], cats:["Lácteo","Fruta","Cereal"], desc:"Cuajada o requesón con fruta y galletas integrales.", ingredients:["Cuajada","Fruta de temporada","Galletas integrales"], allergens:["Lácteos","Gluten"], source:"Sugerencia · desayuno saludable"},
+  {name:"Tostada con mermelada casera o miel y leche", meals:["Desayuno"], cats:["Cereal","Lácteo","Fruta"], desc:"Pan con mermelada casera o miel, acompañado de leche (máx. 2 veces/semana).", ingredients:["Pan","Mermelada","Miel","Leche"], allergens:["Gluten","Lácteos"], source:"Sugerencia · desayuno saludable"},
+
+  {name:"Bocadillo integral de queso y tomate", meals:["Merienda"], cats:["Cereal","Lácteo","Verdura"], desc:"Pan integral con queso y tomate.", ingredients:["Pan integral","Queso","Tomate"], allergens:["Gluten","Lácteos"], source:"Sugerencia · merienda"},
+  {name:"Yogur con fruta troceada", meals:["Merienda"], cats:["Lácteo","Fruta"], desc:"Yogur natural con fruta fresca troceada.", ingredients:["Yogur","Fruta de temporada"], allergens:["Lácteos"], source:"Sugerencia · merienda"},
+  {name:"Fruta de temporada con frutos secos", meals:["Merienda"], cats:["Fruta"], desc:"Pieza de fruta de temporada con un puñado de frutos secos (a partir de 3 años).", ingredients:["Fruta de temporada","Frutos secos"], allergens:["Frutos secos"], source:"Sugerencia · merienda"},
+  {name:"Pan con aceite de oliva y jamón", meals:["Merienda"], cats:["Cereal","Proteína animal (carne)"], desc:"Pan con aceite de oliva y jamón serrano.", ingredients:["Pan","Aceite de oliva","Jamón serrano"], allergens:["Gluten"], source:"Sugerencia · merienda"},
+  {name:"Batido de leche con plátano", meals:["Merienda"], cats:["Lácteo","Fruta"], desc:"Batido casero de leche y plátano.", ingredients:["Leche","Plátano"], allergens:["Lácteos"], source:"Sugerencia · merienda"},
+
+  {name:"Verduras salteadas con tortilla francesa", meals:["Cena"], cats:["Verdura","Huevo"], desc:"Verduras salteadas con tortilla francesa y fruta de postre. Ideal si la comida llevó cereales o legumbres.", ingredients:["Verduras variadas","Huevo"], allergens:["Huevo"], source:"Sugerencia · cena equilibrada"},
+  {name:"Ensalada completa con pescado a la plancha", meals:["Cena"], cats:["Verdura","Proteína animal (pescado/marisco)"], desc:"Ensalada variada con filete de pescado blanco a la plancha y fruta. Ideal si la comida llevó carne.", ingredients:["Lechuga","Tomate","Filete de pescado blanco"], allergens:["Pescado"], source:"Sugerencia · cena equilibrada"},
+  {name:"Crema de verduras con huevo duro", meals:["Cena"], cats:["Verdura","Huevo"], desc:"Crema de verduras de temporada con huevo duro troceado.", ingredients:["Verduras variadas","Huevo"], allergens:["Huevo"], source:"Sugerencia · cena equilibrada"},
+  {name:"Puré de verduras con pescado al vapor", meals:["Cena"], cats:["Verdura","Proteína animal (pescado/marisco)"], desc:"Puré de verduras con pescado blanco al vapor y fruta o lácteo de postre.", ingredients:["Verduras variadas","Filete de pescado blanco"], allergens:["Pescado"], source:"Sugerencia · cena equilibrada"},
+  {name:"Hortalizas crudas con yogur o fruta", meals:["Cena"], cats:["Verdura","Lácteo","Fruta"], desc:"Plato de hortalizas crudas variadas, con yogur o fruta de postre.", ingredients:["Hortalizas variadas","Yogur","Fruta de temporada"], allergens:["Lácteos"], source:"Sugerencia · cena equilibrada"},
+];
+
+/* ---------------------------------------------------------------
+   MES SEMILLA — ABRIL 2026 (comida real; desayuno/cena sugeridos)
+--------------------------------------------------------------- */
+function d(desayuno, primero, segundo, guarnicion, postre, cena) {
+  return {
+    holiday:false, holidayName:"",
+    desayuno,
+    comidaNinos: {primero: primero||"", segundo: segundo||"", guarnicion: guarnicion||"", postre: postre||""},
+    comidaAdultos: {primero:"", segundo:"", guarnicion:"", postre:""},
+    cena
+  };
+}
+const SEED_MONTHS = {
+  "2026-04": {
+    year: 2026, month: 3, // abril = índice 3
+    days: {
+      7:  d("Leche con cereales integrales y fruta", "Arroz con salsa de tomate", "Rabas de calamar", "Verduras horneadas", "Fruta de temporada", "Verduras salteadas con tortilla francesa"),
+      8:  d("Yogur natural con fruta y pan integral", "Sopa de cocido con fideos integrales ECO", "Cocido completo (garbanzos, ternera, pollo y cerdo)", "Repollo y zanahoria", "Fruta de temporada", "Crema de verduras con huevo duro"),
+      9:  d("Tostada integral con tomate y aceite de oliva", "Crema de verduras (calabacín, acelga y zanahoria)", "Tortilla de patata", "Ensalada de lechuga, zanahoria y aceitunas verdes", "Fruta de temporada", "Ensalada completa con pescado a la plancha"),
+      10: d("Cuajada o requesón con fruta y galletas integrales", "Alubias blancas estofadas (pimiento y zanahoria)", "Atún con salsa de tomate", "Ensalada de lechuga", "Yogur sabor", "Verduras salteadas con tortilla francesa"),
+      13: d("Leche con cereales integrales y fruta", "Sopa de estrellas", "Cinta de lomo fresca al ajillo", "Ensalada de lechuga y zanahoria", "Fruta de temporada", "Puré de verduras con pescado al vapor"),
+      14: d("Yogur natural con fruta y pan integral", "Alubias pintas con arroz integral", "Merluza al papillot", "Ensalada de lechuga, tomate y cebolla", "Fruta de temporada", "Verduras salteadas con tortilla francesa"),
+      15: d("Tostada integral con tomate y aceite de oliva", "Crema de calabaza ECO", "Ragout de pavo en salsa de verduras", "Patatas dado", "Fruta de temporada", "Crema de verduras con huevo duro"),
+      16: d("Cuajada o requesón con fruta y galletas integrales", "Lentejas estofadas (zanahoria y pimiento verde)", "Tacos de rape en salsa", "Verduras variadas", "Fruta de temporada", "Ensalada completa con pescado a la plancha"),
+      17: d("Tostada con mermelada casera o miel y leche", "Arroz hortelano (judía verde, calabacín y zanahoria)", "Revuelto de huevo con champiñón", "Ensalada de lechuga y maíz", "Yogur sabor", "Ensalada completa con pescado a la plancha"),
+      20: d("Leche con cereales integrales y fruta", "Macarrones con salsa de calabaza ECO", "Boquerones a la andaluza", "Ensalada de lechuga y tomate", "Fruta de temporada", "Verduras salteadas con tortilla francesa"),
+      21: d("Yogur natural con fruta y pan integral", "Crema de guisantes", "Tortilla de calabacín y patata", "Ensalada de lechuga, pepino y zanahoria", "Fruta de temporada", "Puré de verduras con pescado al vapor"),
+      22: d("Tostada integral con tomate y aceite de oliva", "Paella Valenciana", "Merluza al ajillo", "Ensalada de lechuga y maíz", "Fruta de temporada", "Crema de verduras con huevo duro"),
+      23: d("Cuajada o requesón con fruta y galletas integrales", "Menestra de verduras rehogadas (guisante y judía verde)", "Filete de pollo al chilindrón", "Zanahoria baby", "Yogur sabor", "Ensalada completa con pescado a la plancha"),
+      24: d("Tostada con mermelada casera o miel y leche", "Pisto de verduras", "Cazuelita de garbanzos con champiñón y comino", "Arroz integral", "Fruta de temporada", "Verduras salteadas con tortilla francesa"),
+      27: d("Leche con cereales integrales y fruta", "Lentejas hortelana con verduras", "Pastel de carne casero con puré de patata gratinado", "", "Fruta de temporada", "Crema de verduras con huevo duro"),
+      28: d("Yogur natural con fruta y pan integral", "Patatas estofadas con verduras (judía verde y pimiento)", "Tortilla francesa", "Ensalada de lechuga, tomate y aceitunas", "Fruta de temporada", "Ensalada completa con pescado a la plancha"),
+      29: d("Tostada integral con tomate y aceite de oliva", "Sopa de cocido con fideos integrales ECO", "Cocido completo (garbanzos, ternera, pollo y cerdo)", "Repollo y zanahoria", "Fruta de temporada", "Verduras salteadas con tortilla francesa"),
+      30: d("Cuajada o requesón con fruta y galletas integrales", "Arroz murciano", "Merluza en salsa marinera (gambas y mejillones)", "Ensalada de lechuga y maíz", "Fruta de temporada", "Hortalizas crudas con yogur o fruta"),
+    }
+  }
+};
+
+/* ---------------------------------------------------------------
+   TEMPORADA — ESPAÑA
+--------------------------------------------------------------- */
+const SEASON_DATA = [
+  {month:"Enero", verduras:["Acelga","Alcachofa","Apio","Borraja","Brócoli","Cardo","Col","Coliflor","Endibia","Escarola","Espinaca","Grelos","Lombarda","Nabo","Puerro","Zanahoria"], frutas:["Caqui","Kiwi","Mandarina","Manzana","Naranja","Pera","Plátano","Pomelo"]},
+  {month:"Febrero", verduras:["Acelga","Alcachofa","Apio","Brócoli","Cardo","Col","Coliflor","Endibia","Escarola","Espinaca","Guisante","Habas","Nabo","Puerro","Zanahoria"], frutas:["Kiwi","Mandarina","Manzana","Naranja","Pera","Plátano","Pomelo"]},
+  {month:"Marzo", verduras:["Acelga","Alcachofa","Apio","Brócoli","Espárrago","Espinaca","Guisante","Habas","Puerro","Rábano","Zanahoria"], frutas:["Fresa","Kiwi","Limón","Manzana","Naranja","Pera","Plátano"]},
+  {month:"Abril", verduras:["Acelga","Alcachofa","Apio","Espárrago","Espinaca","Guisante","Habas","Judía verde","Lechuga","Rábano","Zanahoria"], frutas:["Fresa","Limón","Manzana","Níspero","Pera","Plátano"]},
+  {month:"Mayo", verduras:["Acelga","Ajo tierno","Apio","Calabacín","Espárrago","Guisante","Habas","Judía verde","Lechuga","Pepino","Rábano","Tomate","Zanahoria"], frutas:["Albaricoque","Cereza","Fresa","Limón","Níspero","Plátano"]},
+  {month:"Junio", verduras:["Ajo","Calabacín","Judía verde","Lechuga","Pepino","Pimiento","Tomate","Zanahoria"], frutas:["Albaricoque","Cereza","Ciruela","Melocotón","Melón","Nectarina","Sandía","Plátano"]},
+  {month:"Julio", verduras:["Berenjena","Calabacín","Judía verde","Maíz","Pepino","Pimiento","Tomate"], frutas:["Albaricoque","Ciruela","Higo","Melocotón","Melón","Nectarina","Sandía","Uva","Plátano"]},
+  {month:"Agosto", verduras:["Berenjena","Calabacín","Judía verde","Maíz","Pepino","Pimiento","Tomate"], frutas:["Ciruela","Higo","Melocotón","Melón","Nectarina","Sandía","Uva","Plátano"]},
+  {month:"Septiembre", verduras:["Acelga","Berenjena","Calabacín","Judía verde","Maíz","Pepino","Pimiento","Tomate"], frutas:["Granada","Higo","Melón","Membrillo","Pera","Uva","Plátano"]},
+  {month:"Octubre", verduras:["Acelga","Apio","Brócoli","Calabaza","Cardo","Col","Coliflor","Espinaca","Puerro","Zanahoria"], frutas:["Caqui","Granada","Manzana","Membrillo","Pera","Uva","Plátano"]},
+  {month:"Noviembre", verduras:["Acelga","Apio","Brócoli","Calabaza","Cardo","Col","Coliflor","Endibia","Escarola","Espinaca","Puerro","Zanahoria"], frutas:["Caqui","Granada","Kiwi","Mandarina","Manzana","Naranja","Pera","Plátano"]},
+  {month:"Diciembre", verduras:["Acelga","Alcachofa","Apio","Brócoli","Cardo","Col","Coliflor","Endibia","Escarola","Espinaca","Lombarda","Puerro","Zanahoria"], frutas:["Caqui","Kiwi","Mandarina","Manzana","Naranja","Pera","Plátano","Pomelo"]},
+];
+
+/* ---------------------------------------------------------------
+   ESTADO Y PERSISTENCIA — Google Sheets vía Apps Script
+   ---------------------------------------------------------------
+   Recetas, menú mensual, lista de la compra y congelados viven en una
+   Google Sheet compartida, leída y escrita a través de un Web App de
+   Google Apps Script (ver carpeta apps-script/ de este proyecto). Así
+   Alejandro y su mujer pueden editar desde sus propios dispositivos y
+   ver siempre los mismos datos; también se puede editar a mano desde
+   la propia hoja de cálculo.
+   Se mantiene una copia de caché en localStorage solo como red de
+   seguridad: si en algún momento no se puede contactar con la hoja
+   (sin conexión, el script se borra, etc.), la app sigue mostrando la
+   última copia conocida en vez de quedarse vacía, avisando de que está
+   desactualizada. Mientras dure esa situación los cambios no se guardan.
+--------------------------------------------------------------- */
+function loadJSON(key, fallback) { try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; } catch(e){ return fallback; } }
+function saveJSON(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbyzNyjdDMCCyoOoKZNxnVoVpvervA6rt9K_RfCspxCmO4xhvsfPnih2wJpNOG4Z1iL6/exec";
+const LS_APP_CACHE = "recetario_app_cache_v3";
+
+let recipesStore = [];
+let monthsData = {};
+let frozenItems = [];
+let shopStores = {};   // { "ingrediente en minúsculas": "Mercadona" }
+let shopManual = {};   // { weekKey: [{id,weekKey,name,qty}] }
+let shopHidden = {};   // { weekKey: ["ingrediente en minúsculas", ...] }
+let appOffline = false; // true si se está mostrando la copia de caché por fallo de conexión
+let currentMonthKey = null; // se fija en applyLoadedData(), una vez cargados los datos
+
+/* Conversión entre el objeto "día" anidado que usa el resto de la app
+   (comidaNinos/comidaAdultos) y la fila plana que espera la pestaña
+   MenuDias de la Sheet (ninosPrimero, adultosPrimero, ...). */
+function dayToFlat(monthKey, dayNum, day) {
+  const kids = day.comidaNinos || {};
+  const adults = day.comidaAdultos || {};
+  return {
+    monthKey, day: Number(dayNum),
+    holiday: !!day.holiday, holidayName: day.holidayName || "", desayuno: day.desayuno || "",
+    ninosPrimero: kids.primero || "", ninosSegundo: kids.segundo || "",
+    ninosGuarnicion: kids.guarnicion || "", ninosPostre: kids.postre || "",
+    adultosPrimero: adults.primero || "", adultosSegundo: adults.segundo || "",
+    adultosGuarnicion: adults.guarnicion || "", adultosPostre: adults.postre || "",
+    cena: day.cena || "",
+  };
+}
+function flatToDay(row) {
+  return {
+    holiday: !!row.holiday, holidayName: row.holidayName || "", desayuno: row.desayuno || "",
+    comidaNinos: { primero: row.ninosPrimero || "", segundo: row.ninosSegundo || "", guarnicion: row.ninosGuarnicion || "", postre: row.ninosPostre || "" },
+    comidaAdultos: { primero: row.adultosPrimero || "", segundo: row.adultosSegundo || "", guarnicion: row.adultosGuarnicion || "", postre: row.adultosPostre || "" },
+    cena: row.cena || "",
+  };
+}
+
+function applyLoadedData(data) {
+  recipesStore = Array.isArray(data.recipes) ? data.recipes : [];
+
+  monthsData = {};
+  (Array.isArray(data.days) ? data.days : []).forEach(row => {
+    const mk = row.monthKey;
+    if (!mk) return;
+    if (!monthsData[mk]) {
+      const [y, m] = mk.split("-").map(Number);
+      monthsData[mk] = { year: y, month: m - 1, days: {} };
+    }
+    monthsData[mk].days[Number(row.day)] = flatToDay(row);
+  });
+  if (!Object.keys(monthsData).length) monthsData = JSON.parse(JSON.stringify(SEED_MONTHS));
+
+  frozenItems = Array.isArray(data.frozen) ? data.frozen : [];
+
+  shopStores = {};
+  (Array.isArray(data.shopStores) ? data.shopStores : []).forEach(row => { shopStores[row.ingrediente] = row.tienda; });
+
+  shopManual = {};
+  (Array.isArray(data.shopManual) ? data.shopManual : []).forEach(row => {
+    (shopManual[row.weekKey] = shopManual[row.weekKey] || []).push(row);
+  });
+
+  shopHidden = {};
+  (Array.isArray(data.shopHidden) ? data.shopHidden : []).forEach(row => {
+    (shopHidden[row.weekKey] = shopHidden[row.weekKey] || []).push(row.ingrediente);
+  });
+
+  currentMonthKey = Object.keys(monthsData).sort()[0];
+}
+
+/** Carga recetas, menú, compra y congelados desde la Google Sheet. Devuelve true si tuvo éxito. */
+async function loadAppData() {
+  try {
+    const res = await fetch(SHEET_API_URL);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    if (!data || !Array.isArray(data.recipes)) throw new Error("Respuesta con formato inesperado");
+    applyLoadedData(data);
+    appOffline = false;
+    saveJSON(LS_APP_CACHE, data);
+    return true;
+  } catch (err) {
+    console.error("No se pudo conectar con la Google Sheet:", err);
+    applyLoadedData(loadJSON(LS_APP_CACHE, {}));
+    appOffline = true;
+    return false;
+  }
+}
+
+/** POST genérico a la hoja. Usa text/plain para evitar el preflight CORS
+ *  que Apps Script no sabe responder (una petición con Content-Type
+ *  text/plain se considera "simple" y el navegador no la bloquea antes). */
+async function postToSheet(payload) {
+  try {
+    const res = await fetch(SHEET_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    if (!data || data.ok !== true) throw new Error((data && data.error) || "Respuesta sin confirmar");
+    return data;
+  } catch (err) {
+    console.error("Error guardando en la Google Sheet:", err);
+    alert("No se ha podido guardar el cambio en Google Sheets. Comprueba tu conexión e inténtalo de nuevo.\n\n(" + err.message + ")");
+    return null;
+  }
+}
+
+async function createRecipeRemote(recipe) {
+  const res = await postToSheet({ resource: "recipe", action: "create", recipe });
+  if (!res) return false;
+  recipe.id = res.id;
+  recipesStore.push(recipe);
+  return true;
+}
+async function updateRecipeRemote(recipe) {
+  const res = await postToSheet({ resource: "recipe", action: "update", recipe });
+  if (!res) return false;
+  const idx = recipesStore.findIndex(r => r.id === recipe.id);
+  if (idx > -1) recipesStore[idx] = recipe;
+  return true;
+}
+async function deleteRecipeRemote(id) {
+  const res = await postToSheet({ resource: "recipe", action: "delete", id });
+  if (!res) return false;
+  recipesStore = recipesStore.filter(r => r.id !== id);
+  return true;
+}
+
+function allRecipes() { return recipesStore; }
+function findRecipeByName(name) {
+  if (!name) return null;
+  const n = name.trim().toLowerCase();
+  if (!n) return null;
+  return allRecipes().find(r => r.name.trim().toLowerCase() === n) || null;
+}
+
+/** Guarda en la Sheet un único día del menú. */
+async function persistDay(monthKey, dayNum) {
+  const flat = dayToFlat(monthKey, dayNum, getDay(monthKey, dayNum));
+  const res = await postToSheet({ resource: "day", action: "set", day: flat });
+  return !!res;
+}
+/** Guarda en la Sheet varios días de una vez (usado por el generador de menú aleatorio, que puede cambiar muchos días en una sola pasada). */
+async function persistDays(monthKey, dayNums) {
+  if (!dayNums.length) return true;
+  const days = dayNums.map(dn => dayToFlat(monthKey, dn, getDay(monthKey, dn)));
+  const res = await postToSheet({ resource: "day", action: "bulkSet", days });
+  return !!res;
+}
+/** Borra en la Sheet todos los días guardados de un mes (para "crear en blanco" sobre uno ya existente). */
+async function clearMonthRemote(monthKey) {
+  const res = await postToSheet({ resource: "day", action: "clearMonth", monthKey });
+  return !!res;
+}
+
+async function addFrozenRemote(item) {
+  const res = await postToSheet({ resource: "frozen", action: "create", item });
+  if (!res) return false;
+  item.id = res.id;
+  frozenItems.push(item);
+  return true;
+}
+async function deleteFrozenRemote(id) {
+  const res = await postToSheet({ resource: "frozen", action: "delete", id });
+  if (!res) return false;
+  frozenItems = frozenItems.filter(i => i.id !== id);
+  return true;
+}
+
+async function setShopStoreRemote(ingredient, store) {
+  const res = store
+    ? await postToSheet({ resource: "shopStore", action: "set", ingrediente: ingredient, tienda: store })
+    : await postToSheet({ resource: "shopStore", action: "delete", ingrediente: ingredient });
+  if (!res) return false;
+  if (store) shopStores[ingredient] = store; else delete shopStores[ingredient];
+  return true;
+}
+async function addShopItemRemote(weekKey, item) {
+  const res = await postToSheet({ resource: "shopManual", action: "create", item: Object.assign({ weekKey }, item) });
+  if (!res) return false;
+  item.id = res.id;
+  shopManual[weekKey] = shopManual[weekKey] || [];
+  shopManual[weekKey].push(item);
+  return true;
+}
+async function updateShopItemRemote(weekKey, item) {
+  const res = await postToSheet({ resource: "shopManual", action: "update", item: Object.assign({ weekKey }, item) });
+  if (!res) return false;
+  const list = shopManual[weekKey] || [];
+  const idx = list.findIndex(x => x.id === item.id);
+  if (idx > -1) list[idx] = item;
+  return true;
+}
+async function deleteShopItemRemote(weekKey, id) {
+  const res = await postToSheet({ resource: "shopManual", action: "delete", id });
+  if (!res) return false;
+  shopManual[weekKey] = (shopManual[weekKey] || []).filter(x => x.id !== id);
+  return true;
+}
+async function hideShopItemRemote(weekKey, ingredient) {
+  const res = await postToSheet({ resource: "shopHidden", action: "add", weekKey, ingrediente: ingredient });
+  if (!res) return false;
+  shopHidden[weekKey] = shopHidden[weekKey] || [];
+  shopHidden[weekKey].push(ingredient);
+  return true;
+}
+
+let shopGroupMode = "category"; // "category" | "store"
+let activeMealFilters = new Set();
+let activeCatFilters = new Set();
+let activeOriginFilters = new Set();
+let searchTerm = "";
+
+function defaultDay() { return {holiday:false, holidayName:"", desayuno:"", comidaNinos:{primero:"",segundo:"",guarnicion:"",postre:""}, comidaAdultos:{primero:"",segundo:"",guarnicion:"",postre:""}, cena:""}; }
+function getDay(monthKey, day) {
+  const m = monthsData[monthKey];
+  if (!m) return defaultDay();
+  return m.days[day] || defaultDay();
+}
+function setDay(monthKey, day, data) {
+  monthsData[monthKey].days[day] = data;
+}
+function monthLabel(key) {
+  const m = monthsData[key];
+  return MONTH_NAMES[m.month] + " " + m.year;
+}
+function daysInMonth(year, month) { return new Date(year, month+1, 0).getDate(); }
+function firstWeekdayMon0(year, month) { const dow = new Date(year, month, 1).getDay(); return (dow + 6) % 7; }
+function buildMonthGrid(year, month) {
+  const total = daysInMonth(year, month);
+  const first = firstWeekdayMon0(year, month);
+  const cells = [];
+  for (let i=0;i<first;i++) cells.push({day:null, inMonth:false});
+  for (let dnum=1; dnum<=total; dnum++) cells.push({day:dnum, inMonth:true, dow: DOW_NAMES[(first + dnum - 1) % 7]});
+  while (cells.length % 7 !== 0) cells.push({day:null, inMonth:false});
+  const weeks = [];
+  for (let i=0;i<cells.length;i+=7) weeks.push(cells.slice(i,i+7));
+  return weeks;
+}
+
+/* ---------------------------------------------------------------
+   CATEGORIZADOR DE INGREDIENTES (para lista de la compra)
+--------------------------------------------------------------- */
+const INGREDIENT_BUCKETS = [
+  {bucket:"Despensa / condimentos", kws:["aceite","vinagre","miel","mermelada","azafrán","comino","harina","chocolate","cacao","café","azúcar","especias"]},
+  {bucket:"Pescados y marisco", kws:["merluza","atún","rape","boquer","gamba","mejill","calamar","pescado","marisco","salmón"]},
+  {bucket:"Carnes", kws:["pollo","cerdo","ternera","lomo","pavo","jamón","carne","conejo"]},
+  {bucket:"Huevos y lácteos", kws:["huevo","leche","yogur","queso","cuajada","requesón","nata"]},
+  {bucket:"Legumbres", kws:["garbanzo","lenteja","alubia","garrofón","guisante"]},
+  {bucket:"Cereales y pasta", kws:["arroz","macarrones","fideos","pan","galleta","cereal","pasta de estrellas"]},
+  {bucket:"Frutas", kws:["fruta","plátano","manzana"]},
+  {bucket:"Verduras y hortalizas", kws:["tomate","cebolla","ajo","zanahoria","calabacín","pimiento","lechuga","patata","berenjena","puerro","champiñón","alcachofa","judía","repollo","acelga","calabaza","maíz","pepino","aceituna","perejil","guindilla","hortaliza","limón"]},
+];
+function categorizeIngredient(name) {
+  const n = name.toLowerCase();
+  for (const b of INGREDIENT_BUCKETS) {
+    if (b.kws.some(k => n.includes(k))) return b.bucket;
+  }
+  return "Otros";
+}
+
+/* ---------------------------------------------------------------
+   RENDER: RECETARIO
+--------------------------------------------------------------- */
+function renderFilterChips() {
+  const mealBox = document.getElementById("mealFilters");
+  mealBox.innerHTML = "";
+  MEAL_TYPES.forEach(m => {
+    const chip = document.createElement("div");
+    chip.className = "chip meal" + (activeMealFilters.has(m) ? " active" : "");
+    chip.textContent = m;
+    chip.onclick = () => { toggleSet(activeMealFilters, m); renderFilterChips(); renderRecipes(); };
+    mealBox.appendChild(chip);
+  });
+  const catBox = document.getElementById("catFilters");
+  catBox.innerHTML = "";
+  CATEGORIES.forEach(c => {
+    const chip = document.createElement("div");
+    chip.className = "chip" + (activeCatFilters.has(c) ? " active cat" : "");
+    chip.textContent = c;
+    chip.onclick = () => { toggleSet(activeCatFilters, c); renderFilterChips(); renderRecipes(); };
+    catBox.appendChild(chip);
+  });
+  const originBox = document.getElementById("originFilters");
+  originBox.innerHTML = "";
+  getAllOrigins().forEach(o => {
+    const chip = document.createElement("div");
+    chip.className = "chip" + (activeOriginFilters.has(o) ? " active origin" : "");
+    chip.textContent = o;
+    chip.onclick = () => { toggleSet(activeOriginFilters, o); renderFilterChips(); renderRecipes(); };
+    originBox.appendChild(chip);
+  });
+}
+function toggleSet(set, val) { set.has(val) ? set.delete(val) : set.add(val); }
+
+function renderRecipes() {
+  const grid = document.getElementById("recipeGrid");
+  grid.innerHTML = "";
+  const term = searchTerm.trim().toLowerCase();
+  const list = allRecipes().filter(r => {
+    if (activeMealFilters.size && !r.meals.some(m => activeMealFilters.has(m))) return false;
+    if (activeCatFilters.size && !r.cats.some(c => activeCatFilters.has(c))) return false;
+    if (activeOriginFilters.size && !activeOriginFilters.has(originOf(r))) return false;
+    if (term && !(r.name.toLowerCase().includes(term) || (r.desc||"").toLowerCase().includes(term))) return false;
+    return true;
+  });
+  document.getElementById("countLine").textContent = list.length + " receta" + (list.length===1?"":"s") + " encontrada" + (list.length===1?"":"s");
+
+  list.forEach((r) => {
+    const card = document.createElement("div");
+    card.className = "recipe-card" + (r.custom ? " custom" : "");
+    const mealTags = r.meals.map(m => `<span class="tag meal">${m}</span>`).join("");
+    const catTags = r.cats.map(c => `<span class="tag cat">${c}</span>`).join("");
+    const originTag = `<span class="tag origin" title="${escapeHtml(r.source||originOf(r))}">${escapeHtml(originOf(r))}</span>`;
+    card.innerHTML = `
+      <h3>${escapeHtml(r.name)}</h3>
+      <div class="tag-row">${mealTags}${catTags}${originTag}</div>
+      <div class="desc">${escapeHtml(r.desc||"")}</div>
+      ${r.ingredients && r.ingredients.length ? `<div class="ingredients"><b>Ingredientes:</b> ${r.ingredients.join(", ")}</div>` : ""}
+      ${r.allergens && r.allergens.length ? `<div class="allergens">⚠️ Alérgenos: ${r.allergens.join(", ")}</div>` : ""}
+      ${r.url ? `<div class="recipe-link"><a href="${escapeHtml(r.url)}" target="_blank" rel="noopener noreferrer">🔗 Ver receta original</a></div>` : ""}
+      <div class="card-actions"></div>
+    `;
+    const actions = card.querySelector(".card-actions");
+    const editBtn = document.createElement("button");
+    editBtn.className = "del";
+    editBtn.textContent = "✎ Editar";
+    editBtn.onclick = () => openEditRecipeModal(r.id);
+    actions.appendChild(editBtn);
+    const del = document.createElement("button");
+    del.className = "del remove-style";
+    del.textContent = "🗑 Eliminar";
+    del.onclick = async () => {
+      if (!confirm(`¿Eliminar "${r.name}" del recetario?`)) return;
+      del.disabled = true; del.textContent = "Eliminando…";
+      const ok = await deleteRecipeRemote(r.id);
+      del.disabled = false; del.textContent = "🗑 Eliminar";
+      if (!ok) return;
+      renderFilterChips();
+      renderRecipes();
+      refreshRecipeDatalist();
+    };
+    actions.appendChild(del);
+    grid.appendChild(card);
+  });
+}
+function escapeHtml(s) { const div = document.createElement("div"); div.textContent = s; return div.innerHTML; }
+
+/* Modal añadir receta */
+let newMealSel = new Set();
+let newCatSel = new Set();
+function renderModalChips() {
+  const mealBox = document.getElementById("newMealChips");
+  mealBox.innerHTML = "";
+  MEAL_TYPES.forEach(m => {
+    const chip = document.createElement("div");
+    chip.className = "chip meal" + (newMealSel.has(m) ? " active" : "");
+    chip.textContent = m;
+    chip.onclick = () => { toggleSet(newMealSel, m); renderModalChips(); };
+    mealBox.appendChild(chip);
+  });
+  const catBox = document.getElementById("newCatChips");
+  catBox.innerHTML = "";
+  CATEGORIES.forEach(c => {
+    const chip = document.createElement("div");
+    chip.className = "chip" + (newCatSel.has(c) ? " active cat" : "");
+    chip.textContent = c;
+    chip.onclick = () => { toggleSet(newCatSel, c); renderModalChips(); };
+    catBox.appendChild(chip);
+  });
+}
+let editingRecipeId = null; // null = modo "añadir"; si no, id de la receta que se está editando
+document.getElementById("addRecipeBtn").onclick = () => {
+  editingRecipeId = null;
+  newMealSel = new Set(); newCatSel = new Set();
+  document.getElementById("recipeModalTitle").textContent = "Añadir receta";
+  document.getElementById("newName").value = "";
+  document.getElementById("newShort").value = "";
+  document.getElementById("newDesc").value = "";
+  document.getElementById("newIngredients").value = "";
+  document.getElementById("newAllergens").value = "";
+  document.getElementById("newUrl").value = "";
+  renderModalChips();
+  document.getElementById("modalBackdrop").classList.add("show");
+};
+function openEditRecipeModal(id) {
+  const r = recipesStore.find(x => x.id === id);
+  if (!r) return;
+  editingRecipeId = id;
+  newMealSel = new Set(r.meals || []);
+  newCatSel = new Set(r.cats || []);
+  document.getElementById("recipeModalTitle").textContent = "Editar receta";
+  document.getElementById("newName").value = r.name || "";
+  document.getElementById("newShort").value = r.short || "";
+  document.getElementById("newDesc").value = r.desc || "";
+  document.getElementById("newIngredients").value = (r.ingredients || []).join(", ");
+  document.getElementById("newAllergens").value = (r.allergens || []).join(", ");
+  document.getElementById("newUrl").value = r.url || "";
+  renderModalChips();
+  document.getElementById("modalBackdrop").classList.add("show");
+}
+document.getElementById("cancelModal").onclick = () => document.getElementById("modalBackdrop").classList.remove("show");
+document.getElementById("saveRecipe").onclick = async () => {
+  const name = document.getElementById("newName").value.trim();
+  if (!name) { alert("Ponle un nombre a la receta."); return; }
+  const short = document.getElementById("newShort").value.trim();
+  const desc = document.getElementById("newDesc").value.trim();
+  const ingredientsRaw = document.getElementById("newIngredients").value.trim();
+  const allergensRaw = document.getElementById("newAllergens").value.trim();
+  const ingredients = ingredientsRaw ? ingredientsRaw.split(",").map(s=>s.trim()).filter(Boolean) : [];
+  const allergens = allergensRaw ? allergensRaw.split(",").map(s=>s.trim()).filter(Boolean) : [];
+  const url = document.getElementById("newUrl").value.trim();
+  const meals = Array.from(newMealSel);
+  const cats = Array.from(newCatSel);
+
+  const saveBtn = document.getElementById("saveRecipe");
+  saveBtn.disabled = true;
+  const originalLabel = saveBtn.textContent;
+  saveBtn.textContent = "Guardando…";
+
+  let ok;
+  if (editingRecipeId) {
+    const r = recipesStore.find(x => x.id === editingRecipeId);
+    const updated = Object.assign({}, r, {name, short, desc, ingredients, allergens, url, meals, cats});
+    ok = await updateRecipeRemote(updated);
+  } else {
+    const created = {
+      name, short, desc, ingredients, allergens, url, meals, cats,
+      source: "Añadida por ti",
+      custom: true
+    };
+    ok = await createRecipeRemote(created);
+  }
+
+  saveBtn.disabled = false;
+  saveBtn.textContent = originalLabel;
+  if (!ok) return; // el error ya se ha avisado dentro de postToSheet()
+
+  document.getElementById("modalBackdrop").classList.remove("show");
+  renderFilterChips();
+  renderRecipes();
+  refreshRecipeDatalist();
+  renderMonth(currentMonthKey);
+};
+document.getElementById("clearFiltersBtn").onclick = () => {
+  activeMealFilters.clear(); activeCatFilters.clear(); activeOriginFilters.clear();
+  document.getElementById("searchInput").value = "";
+  searchTerm = "";
+  renderFilterChips(); renderRecipes();
+};
+document.getElementById("searchInput").addEventListener("input", (e) => {
+  searchTerm = e.target.value; renderRecipes();
+});
+
+/* ---------------------------------------------------------------
+   RENDER: MENÚ MENSUAL
+--------------------------------------------------------------- */
+function renderMonthSelect() {
+  const sel = document.getElementById("monthSelect");
+  sel.innerHTML = "";
+  Object.keys(monthsData).sort().forEach(key => {
+    const opt = document.createElement("option");
+    opt.value = key; opt.textContent = monthLabel(key);
+    if (key === currentMonthKey) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  sel.onchange = () => { currentMonthKey = sel.value; renderMonth(currentMonthKey); };
+}
+
+function mealItems(obj) { return [obj.primero, obj.segundo, obj.guarnicion, obj.postre].filter(Boolean); }
+
+// Nombre corto para el calendario resumido: usa el campo "short" de la receta si existe;
+// si no, quita el detalle entre paréntesis y simplifica las ensaladas a solo "Ensalada".
+function shortLabelFor(name) {
+  const r = findRecipeByName(name);
+  if (r && r.short && r.short.trim()) return r.short.trim();
+  let s = name.replace(/\s*\([^)]*\)/g, "").trim();
+  if (/^Ensalada\b/i.test(s)) return "Ensalada";
+  return s;
+}
+
+// Línea resumida para el calendario familiar: primero + segundo + guarnición (sin postre),
+// acortados y sin repetir el mismo nombre corto dos veces (ej. un cocido queda solo como "Cocido").
+function condensedMealLine(obj) {
+  const raw = [obj.primero, obj.segundo, obj.guarnicion].filter(Boolean);
+  const shortened = raw.map(shortLabelFor);
+  const deduped = shortened.filter((val, idx) => shortened.indexOf(val) === idx);
+  return deduped.join(" · ");
+}
+
+function dayCategorySummary(dayData) {
+  const cats = new Set();
+  const texts = [dayData.desayuno, dayData.cena]
+    .concat(mealItems(dayData.comidaNinos))
+    .concat(mealItems(dayData.comidaAdultos));
+  texts.forEach(txt => {
+    const r = findRecipeByName(txt);
+    if (r) r.cats.forEach(c => cats.add(c));
+  });
+  return Array.from(cats);
+}
+
+function renderMonth(monthKey) {
+  const m = monthsData[monthKey];
+  const container = document.getElementById("monthContent");
+  container.innerHTML = "";
+  if (!m) { container.innerHTML = "<p>Aún no tengo el menú de este mes.</p>"; return; }
+  const weeks = buildMonthGrid(m.year, m.month);
+  weeks.forEach(week => {
+    const weekDiv = document.createElement("div");
+    weekDiv.className = "week";
+    const grid = document.createElement("div");
+    grid.className = "week-grid";
+    week.forEach(cell => {
+      const card = document.createElement("div");
+      if (!cell.inMonth) {
+        card.className = "day-card out";
+        grid.appendChild(card);
+        return;
+      }
+      const dayData = getDay(monthKey, cell.day);
+      const kidsItems = mealItems(dayData.comidaNinos);
+      const adultItems = mealItems(dayData.comidaAdultos);
+      const hasContent = dayData.desayuno || kidsItems.length || adultItems.length || dayData.cena || dayData.holiday;
+      if (!hasContent) {
+        card.className = "day-card blank-day";
+        card.innerHTML = `
+          <div style="position:absolute; top:10px; left:12px; font-size:11px; color:var(--text-soft);">${cell.dow} · ${cell.day}</div>
+          <button class="add-link no-print">+ Añadir</button>
+        `;
+        card.querySelector(".add-link").onclick = () => openEditDayModal(monthKey, cell.day);
+        grid.appendChild(card);
+        return;
+      }
+      card.className = "day-card";
+      const cats = dayCategorySummary(dayData);
+      const catTags = cats.map(c => `<span class="tag cat">${escapeHtml(c)}</span>`).join("");
+      const kidsLine = condensedMealLine(dayData.comidaNinos);
+      const adultLine = condensedMealLine(dayData.comidaAdultos);
+      card.innerHTML = `
+        <div class="day-head">
+          <div><span class="dow">${cell.dow}</span><span class="num">${cell.day} · ${MONTH_NAMES[m.month]}</span></div>
+          <button class="edit-btn no-print">✎ Editar</button>
+        </div>
+        ${dayData.holiday ? `<div class="holiday-badge">🎉 ${escapeHtml(dayData.holidayName || "Festivo")}</div>` : ""}
+        ${dayData.desayuno ? `<div class="meal-line" title="${escapeHtml(dayData.desayuno)}"><b>Desayuno:</b> ${escapeHtml(dayData.desayuno)}</div>` : ""}
+        ${kidsLine ? `<div class="meal-line kids" title="${escapeHtml(kidsLine)}"><b>Niños:</b> ${escapeHtml(kidsLine)}</div>` : ""}
+        ${adultLine ? `<div class="meal-line adults" title="${escapeHtml(adultLine)}"><b>Adultos:</b> ${escapeHtml(adultLine)}</div>` : ""}
+        ${dayData.cena ? `<div class="meal-line" title="${escapeHtml(dayData.cena)}"><b>Cena:</b> ${escapeHtml(dayData.cena)}</div>` : ""}
+        ${cats.length ? `<div class="day-cats">Hoy comimos: ${catTags}</div>` : ""}
+      `;
+      card.querySelector(".edit-btn").onclick = () => openEditDayModal(monthKey, cell.day);
+      grid.appendChild(card);
+    });
+    weekDiv.appendChild(grid);
+    container.appendChild(weekDiv);
+  });
+}
+
+/* ---------------------------------------------------------------
+   RENDER: MENÚ NIÑOS (verificación, detalle completo sin resumir)
+--------------------------------------------------------------- */
+function renderKidsMonthSelect() {
+  const sel = document.getElementById("kidsMonthSelect");
+  const prevVal = sel.value;
+  sel.innerHTML = "";
+  Object.keys(monthsData).sort().forEach(key => {
+    const opt = document.createElement("option");
+    opt.value = key; opt.textContent = monthLabel(key);
+    sel.appendChild(opt);
+  });
+  sel.value = monthsData[prevVal] ? prevVal : currentMonthKey;
+  sel.onchange = () => renderKidsMenu(sel.value);
+}
+function renderKidsMenu(monthKey) {
+  const m = monthsData[monthKey];
+  const container = document.getElementById("kidsMonthContent");
+  container.innerHTML = "";
+  if (!m) { container.innerHTML = "<p>Aún no tengo el menú de este mes.</p>"; return; }
+  const weeks = buildMonthGrid(m.year, m.month);
+  weeks.forEach(week => {
+    const weekDiv = document.createElement("div");
+    weekDiv.className = "week";
+    const grid = document.createElement("div");
+    grid.className = "week-grid";
+    week.forEach(cell => {
+      const card = document.createElement("div");
+      if (!cell.inMonth) {
+        card.className = "day-card out";
+        grid.appendChild(card);
+        return;
+      }
+      const dayData = getDay(monthKey, cell.day);
+      const k = dayData.comidaNinos;
+      const hasContent = k.primero || k.segundo || k.guarnicion || k.postre || dayData.holiday;
+      if (!hasContent) {
+        card.className = "day-card blank-day";
+        card.innerHTML = `
+          <div style="position:absolute; top:10px; left:12px; font-size:11px; color:var(--text-soft);">${cell.dow} · ${cell.day}</div>
+          <button class="add-link no-print">+ Añadir</button>
+        `;
+        card.querySelector(".add-link").onclick = () => openEditDayModal(monthKey, cell.day);
+        grid.appendChild(card);
+        return;
+      }
+      card.className = "day-card";
+      card.innerHTML = `
+        <div class="day-head">
+          <div><span class="dow">${cell.dow}</span><span class="num">${cell.day} · ${MONTH_NAMES[m.month]}</span></div>
+          <button class="edit-btn no-print">✎ Editar</button>
+        </div>
+        ${dayData.holiday ? `<div class="holiday-badge">🎉 ${escapeHtml(dayData.holidayName || "Festivo")}</div>` : ""}
+        ${k.primero ? `<div class="meal-block comida"><div class="m-label">Primero</div><div class="m-text"><span class="item">${escapeHtml(k.primero)}</span></div></div>` : ""}
+        ${k.segundo ? `<div class="meal-block comida"><div class="m-label">Segundo</div><div class="m-text"><span class="item">${escapeHtml(k.segundo)}</span></div></div>` : ""}
+        ${k.guarnicion ? `<div class="meal-block comida"><div class="m-label">Guarnición</div><div class="m-text"><span class="item">${escapeHtml(k.guarnicion)}</span></div></div>` : ""}
+        ${k.postre ? `<div class="meal-block comida"><div class="m-label">Postre</div><div class="m-text"><span class="item">${escapeHtml(k.postre)}</span></div></div>` : ""}
+      `;
+      card.querySelector(".edit-btn").onclick = () => openEditDayModal(monthKey, cell.day);
+      grid.appendChild(card);
+    });
+    weekDiv.appendChild(grid);
+    container.appendChild(weekDiv);
+  });
+}
+
+/* Modal editar día */
+let editingContext = null;
+function refreshRecipeDatalist() {
+  const dl = document.getElementById("recipeNamesList");
+  dl.innerHTML = "";
+  const names = Array.from(new Set(allRecipes().map(r => r.name))).sort();
+  names.forEach(n => {
+    const opt = document.createElement("option");
+    opt.value = n;
+    dl.appendChild(opt);
+  });
+}
+function openEditDayModal(monthKey, day) {
+  editingContext = {monthKey, day};
+  const data = getDay(monthKey, day);
+  document.getElementById("dayModalTitle").textContent = "Editar día — " + day + " de " + monthLabel(monthKey);
+  document.getElementById("dayHoliday").checked = !!data.holiday;
+  document.getElementById("holidayNameField").style.display = data.holiday ? "block" : "none";
+  document.getElementById("dayHolidayName").value = data.holidayName || "";
+  document.getElementById("dayDesayuno").value = data.desayuno || "";
+  document.getElementById("dayPrimero").value = data.comidaNinos.primero || "";
+  document.getElementById("daySegundo").value = data.comidaNinos.segundo || "";
+  document.getElementById("dayGuarnicion").value = data.comidaNinos.guarnicion || "";
+  document.getElementById("dayPostre").value = data.comidaNinos.postre || "";
+  document.getElementById("dayPrimeroAd").value = data.comidaAdultos.primero || "";
+  document.getElementById("daySegundoAd").value = data.comidaAdultos.segundo || "";
+  document.getElementById("dayGuarnicionAd").value = data.comidaAdultos.guarnicion || "";
+  document.getElementById("dayPostreAd").value = data.comidaAdultos.postre || "";
+  document.getElementById("dayCena").value = data.cena || "";
+  refreshRecipeDatalist();
+  document.getElementById("dayModalBackdrop").classList.add("show");
+}
+document.getElementById("dayHoliday").addEventListener("change", (e) => {
+  document.getElementById("holidayNameField").style.display = e.target.checked ? "block" : "none";
+});
+document.getElementById("cancelDayModal").onclick = () => document.getElementById("dayModalBackdrop").classList.remove("show");
+document.getElementById("clearDayBtn").onclick = () => {
+  document.getElementById("dayHoliday").checked = false;
+  document.getElementById("holidayNameField").style.display = "none";
+  ["dayHolidayName","dayDesayuno","dayPrimero","daySegundo","dayGuarnicion","dayPostre","dayPrimeroAd","daySegundoAd","dayGuarnicionAd","dayPostreAd","dayCena"].forEach(id => document.getElementById(id).value = "");
+};
+document.getElementById("saveDayBtn").onclick = async () => {
+  if (!editingContext) return;
+  const data = {
+    holiday: document.getElementById("dayHoliday").checked,
+    holidayName: document.getElementById("dayHolidayName").value.trim(),
+    desayuno: document.getElementById("dayDesayuno").value.trim(),
+    comidaNinos: {
+      primero: document.getElementById("dayPrimero").value.trim(),
+      segundo: document.getElementById("daySegundo").value.trim(),
+      guarnicion: document.getElementById("dayGuarnicion").value.trim(),
+      postre: document.getElementById("dayPostre").value.trim(),
+    },
+    comidaAdultos: {
+      primero: document.getElementById("dayPrimeroAd").value.trim(),
+      segundo: document.getElementById("daySegundoAd").value.trim(),
+      guarnicion: document.getElementById("dayGuarnicionAd").value.trim(),
+      postre: document.getElementById("dayPostreAd").value.trim(),
+    },
+    cena: document.getElementById("dayCena").value.trim(),
+  };
+  const {monthKey} = editingContext;
+  setDay(monthKey, editingContext.day, data);
+  const saveBtn = document.getElementById("saveDayBtn");
+  saveBtn.disabled = true; saveBtn.textContent = "Guardando…";
+  const ok = await persistDay(monthKey, editingContext.day);
+  saveBtn.disabled = false; saveBtn.textContent = "Guardar";
+  if (!ok) return; // el error ya se ha avisado dentro de postToSheet()
+  document.getElementById("dayModalBackdrop").classList.remove("show");
+  renderMonth(currentMonthKey);
+  renderKidsMenu(currentMonthKey);
+  renderShoppingTab();
+};
+
+/* Modal nuevo mes */
+function renderNewMonthSelect() {
+  const sel = document.getElementById("newMonthSelect");
+  sel.innerHTML = "";
+  MONTH_NAMES.forEach((name, idx) => {
+    const opt = document.createElement("option");
+    opt.value = idx; opt.textContent = name;
+    sel.appendChild(opt);
+  });
+}
+document.getElementById("newMonthBtn").onclick = () => {
+  renderNewMonthSelect();
+  const now = new Date();
+  document.getElementById("newMonthSelect").value = now.getMonth();
+  document.getElementById("newMonthYear").value = now.getFullYear();
+  document.getElementById("newMonthBackdrop").classList.add("show");
+};
+document.getElementById("cancelNewMonth").onclick = () => document.getElementById("newMonthBackdrop").classList.remove("show");
+document.getElementById("createNewMonth").onclick = async () => {
+  const monthIdx = parseInt(document.getElementById("newMonthSelect").value, 10);
+  const year = parseInt(document.getElementById("newMonthYear").value, 10);
+  if (!year || year < 2000) { alert("Introduce un año válido."); return; }
+  const key = year + "-" + String(monthIdx+1).padStart(2,"0");
+  const overwriting = !!monthsData[key];
+  if (overwriting) {
+    if (!confirm("Ya existe " + MONTH_NAMES[monthIdx] + " " + year + ". ¿Quieres sobrescribirlo con un mes en blanco?")) return;
+  }
+  let ok = true;
+  if (overwriting) {
+    const btn = document.getElementById("createNewMonth");
+    btn.disabled = true; btn.textContent = "Creando…";
+    ok = await clearMonthRemote(key);
+    btn.disabled = false; btn.textContent = "Crear mes en blanco";
+  }
+  if (!ok) return; // el error ya se ha avisado dentro de postToSheet()
+  monthsData[key] = {year, month: monthIdx, days: {}};
+  currentMonthKey = key;
+  renderMonthSelect();
+  renderMonth(key);
+  renderKidsMonthSelect();
+  renderKidsMenu(key);
+  renderShoppingMonthSelect();
+  document.getElementById("newMonthBackdrop").classList.remove("show");
+};
+
+/* Exportar a PDF (impresión) */
+document.getElementById("exportPdfBtn").onclick = () => {
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+  document.querySelector('.tab-btn[data-tab="menu"]').classList.add("active");
+  document.getElementById("panel-menu").classList.add("active");
+  setTimeout(() => window.print(), 150);
+};
+
+/* ---------------------------------------------------------------
+   GENERADOR DE MENÚ MENSUAL ALEATORIO Y EQUILIBRADO
+   Solo rellena huecos (desayuno / comida de adultos / cena) que
+   estén vacíos; nunca toca lo que ya haya escrito o el menú de
+   los niños. Criterios (según el menú de abril del colegio y
+   nutrición general):
+   - Más pescado y legumbres, algo menos de carne (Real Decreto
+     de comedores: "aumento de pescados, legumbres y frutas").
+   - Evita repetir el mismo plato en días seguidos.
+   - Evita que adultos coman el mismo tipo de proteína que los
+     niños ese día, cuando es posible, para variar en casa.
+   - La cena complementa la comida del día (regla del propio
+     menú escolar: cereales/legumbres a mediodía → verdura por
+     la noche; carne/huevo a mediodía → pescado o huevo por la
+     noche), con fruta o lácteo de postre.
+   - Postre casi siempre fruta de temporada.
+--------------------------------------------------------------- */
+function proteinCategoryOf(name) {
+  if (!name) return null;
+  const r = findRecipeByName(name);
+  if (!r) return null;
+  if (r.cats.includes("Proteína animal (pescado/marisco)")) return "pescado";
+  if (r.cats.includes("Proteína animal (carne)")) return "carne";
+  if (r.cats.includes("Huevo")) return "huevo";
+  if (r.cats.includes("Legumbre")) return "legumbre";
+  return null;
+}
+function buildMenuPools() {
+  const comida = allRecipes().filter(r => r.meals.includes("Comida"));
+  const primero = comida.filter(r =>
+    /^(Crema|Sopa|Puré|Pisto|Menestra|Arroz|Macarrones|Alubias|Lentejas|Cazuelita|Paella|Patatas)/i.test(r.name) ||
+    r.cats.includes("Cereal") || r.cats.includes("Legumbre")
+  );
+  const segundo = comida.filter(r =>
+    r.cats.includes("Proteína animal (carne)") || r.cats.includes("Proteína animal (pescado/marisco)") || r.cats.includes("Huevo")
+  );
+  const guarnicion = comida.filter(r =>
+    r.cats.length === 1 && r.cats[0] === "Verdura" && !/^(Crema|Sopa|Puré|Pisto|Menestra)/i.test(r.name)
+  );
+  return {
+    primero, segundo, guarnicion,
+    pescado: segundo.filter(r => r.cats.includes("Proteína animal (pescado/marisco)")),
+    carne: segundo.filter(r => r.cats.includes("Proteína animal (carne)")),
+    huevo: segundo.filter(r => r.cats.includes("Huevo")),
+    legumbre: primero.filter(r => r.cats.includes("Legumbre")),
+  };
+}
+function weightedPick(weights) {
+  const total = Object.values(weights).reduce((a,b) => a+b, 0);
+  let r = Math.random() * total;
+  for (const k of Object.keys(weights)) { r -= weights[k]; if (r <= 0) return k; }
+  return Object.keys(weights)[0];
+}
+function pickRandomRecipe(list, avoidNames) {
+  const avoid = avoidNames || [];
+  const pool = list.filter(r => !avoid.includes(r.name));
+  const use = pool.length ? pool : list;
+  return use.length ? use[Math.floor(Math.random() * use.length)] : null;
+}
+
+function generateRandomMonth(monthKey) {
+  const m = monthsData[monthKey];
+  if (!m) return [];
+  const pools = buildMenuPools();
+  const targetShare = {pescado:0.30, legumbre:0.30, carne:0.25, huevo:0.15};
+  const counts = {pescado:0, carne:0, huevo:0, legumbre:0};
+  let totalAdultDays = 0;
+  const recentAdultDishes = [];
+  const recentDesayunos = [];
+  const daysFilled = [];
+
+  const weeks = buildMonthGrid(m.year, m.month);
+  const allDays = weeks.flat().filter(c => c.inMonth).map(c => c.day).sort((a,b) => a-b);
+
+  allDays.forEach(dayNum => {
+    const day = getDay(monthKey, dayNum);
+    if (day.holiday) return; // no se toca un día marcado como festivo
+    let changed = false;
+
+    if (!day.desayuno) {
+      const options = allRecipes().filter(r => r.meals.includes("Desayuno"));
+      const pick = pickRandomRecipe(options, recentDesayunos.slice(-2));
+      if (pick) { day.desayuno = pick.name; recentDesayunos.push(pick.name); changed = true; }
+    }
+
+    const ca = day.comidaAdultos;
+    if (!ca.primero && !ca.segundo && !ca.guarnicion && !ca.postre) {
+      const kidsProtein = proteinCategoryOf(day.comidaNinos.segundo);
+      const weights = {};
+      Object.keys(targetShare).forEach(cat => {
+        const share = totalAdultDays ? counts[cat] / totalAdultDays : 0;
+        let w = Math.max(0.05, targetShare[cat] - share + 0.15);
+        if (cat === kidsProtein) w *= 0.5; // variedad respecto a lo que comen los niños ese día
+        weights[cat] = w;
+      });
+      const chosenCat = weightedPick(weights);
+      const segundoPool = pools[chosenCat] && pools[chosenCat].length ? pools[chosenCat] : pools.segundo;
+      const segundoR = pickRandomRecipe(segundoPool, recentAdultDishes.slice(-3));
+      let primeroR;
+      if (chosenCat === "legumbre") {
+        primeroR = segundoR; // el guiso de legumbre ya hace de plato único
+      } else {
+        primeroR = pickRandomRecipe(pools.primero, recentAdultDishes.slice(-3).concat(segundoR ? [segundoR.name] : []));
+      }
+      const guarnicionR = pickRandomRecipe(pools.guarnicion, []);
+      const postreName = Math.random() < 0.85 ? "Fruta de temporada" : "Yogur sabor";
+      day.comidaAdultos = {
+        primero: primeroR ? primeroR.name : "",
+        segundo: (chosenCat !== "legumbre" && segundoR) ? segundoR.name : "",
+        guarnicion: guarnicionR ? guarnicionR.name : "",
+        postre: postreName
+      };
+      if (segundoR) { counts[chosenCat] = (counts[chosenCat]||0) + 1; totalAdultDays++; recentAdultDishes.push(segundoR.name); }
+      if (primeroR) recentAdultDishes.push(primeroR.name);
+      changed = true;
+    }
+
+    if (!day.cena) {
+      const lunchMain = day.comidaNinos.segundo || day.comidaAdultos.segundo || day.comidaNinos.primero || day.comidaAdultos.primero;
+      const lunchProtein = proteinCategoryOf(lunchMain);
+      const cenaRecipes = allRecipes().filter(r => r.meals.includes("Cena"));
+      let filtered;
+      if (lunchProtein === "pescado") filtered = cenaRecipes.filter(r => r.cats.includes("Huevo"));
+      else if (lunchProtein === "carne") filtered = cenaRecipes.filter(r => r.cats.includes("Proteína animal (pescado/marisco)"));
+      else if (lunchProtein === "huevo") filtered = cenaRecipes.filter(r => r.cats.includes("Proteína animal (pescado/marisco)") || /Hortalizas/i.test(r.name));
+      else filtered = cenaRecipes;
+      const pick = pickRandomRecipe(filtered.length ? filtered : cenaRecipes, []);
+      if (pick) { day.cena = pick.name; changed = true; }
+    }
+
+    if (changed) { setDay(monthKey, dayNum, day); daysFilled.push(dayNum); }
+  });
+
+  return daysFilled;
+}
+
+document.getElementById("randomMenuBtn").onclick = async () => {
+  const ok = confirm(
+    "Voy a proponer desayuno, comida de adultos y cena para los días de " + monthLabel(currentMonthKey) +
+    " que tengas vacíos, cuidando la variedad (evitando repetir mucho lo mismo), dando más peso a pescado, " +
+    "legumbres y fruta, y variando respecto a lo que coman los niños ese día. No tocaré nada de lo que ya " +
+    "hayas rellenado ni el menú de los niños.\n\n¿Continuar?"
+  );
+  if (!ok) return;
+  const btn = document.getElementById("randomMenuBtn");
+  btn.disabled = true; btn.textContent = "Generando…";
+  const changedDays = generateRandomMonth(currentMonthKey);
+  const saved = await persistDays(currentMonthKey, changedDays);
+  btn.disabled = false; btn.textContent = "🎲 Generar menú aleatorio";
+  if (!saved) return; // el error ya se ha avisado dentro de postToSheet()
+  renderMonth(currentMonthKey);
+  renderKidsMenu(currentMonthKey);
+  renderShoppingTab();
+  alert(changedDays.length > 0
+    ? "Listo. He completado " + changedDays.length + " día(s) de " + monthLabel(currentMonthKey) + ". Revísalo y edita cualquier día si quieres cambiar algo."
+    : "No había días vacíos que rellenar en " + monthLabel(currentMonthKey) + "."
+  );
+};
+
+/* ---------------------------------------------------------------
+   RENDER: LISTA DE LA COMPRA
+--------------------------------------------------------------- */
+function renderShoppingMonthSelect() {
+  const sel = document.getElementById("shopMonthSelect");
+  const prevVal = sel.value;
+  sel.innerHTML = "";
+  Object.keys(monthsData).sort().forEach(key => {
+    const opt = document.createElement("option");
+    opt.value = key; opt.textContent = monthLabel(key);
+    sel.appendChild(opt);
+  });
+  sel.value = monthsData[prevVal] ? prevVal : currentMonthKey;
+  sel.onchange = () => { renderShoppingWeekSelect(); renderShoppingTab(); };
+}
+function renderShoppingWeekSelect() {
+  const monthKey = document.getElementById("shopMonthSelect").value;
+  const m = monthsData[monthKey];
+  const weekSel = document.getElementById("shopWeekSelect");
+  weekSel.innerHTML = "";
+  const weeks = buildMonthGrid(m.year, m.month);
+  weeks.forEach((week, idx) => {
+    const inMonthDays = week.filter(c => c.inMonth).map(c => c.day);
+    if (!inMonthDays.length) return;
+    const opt = document.createElement("option");
+    opt.value = idx;
+    opt.textContent = "Semana del " + inMonthDays[0] + " al " + inMonthDays[inMonthDays.length-1] + " de " + MONTH_NAMES[m.month];
+    weekSel.appendChild(opt);
+  });
+  weekSel.onchange = () => { renderShoppingDaySelect(); renderShoppingTab(); };
+  renderShoppingDaySelect();
+}
+function renderShoppingDaySelect() {
+  const monthKey = document.getElementById("shopMonthSelect").value;
+  const m = monthsData[monthKey];
+  const weekIdx = parseInt(document.getElementById("shopWeekSelect").value, 10);
+  const daySel = document.getElementById("shopDaySelect");
+  daySel.innerHTML = "";
+  const optAll = document.createElement("option");
+  optAll.value = "all"; optAll.textContent = "Toda la semana";
+  daySel.appendChild(optAll);
+  const weeks = buildMonthGrid(m.year, m.month);
+  const week = weeks[weekIdx];
+  if (week) {
+    week.filter(c => c.inMonth).forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c.day;
+      opt.textContent = c.dow + " " + c.day;
+      daySel.appendChild(opt);
+    });
+  }
+  daySel.onchange = renderShoppingTab;
+}
+function currentShopWeekKey() {
+  const monthKey = document.getElementById("shopMonthSelect").value;
+  const weekIdx = document.getElementById("shopWeekSelect").value;
+  return monthKey + "_w" + weekIdx;
+}
+function populateStoreSelect(sel, selected) {
+  sel.innerHTML = "";
+  const optNone = document.createElement("option");
+  optNone.value = ""; optNone.textContent = "Sin asignar";
+  sel.appendChild(optNone);
+  STORES.forEach(s => {
+    const opt = document.createElement("option");
+    opt.value = s; opt.textContent = s;
+    sel.appendChild(opt);
+  });
+  sel.value = selected || "";
+}
+function renderShopGroupChips() {
+  const box = document.getElementById("shopGroupChips");
+  box.innerHTML = "";
+  [["category","Por categoría de alimento"],["store","Por supermercado"]].forEach(([mode,label]) => {
+    const chip = document.createElement("div");
+    chip.className = "chip" + (shopGroupMode === mode ? " active" : "");
+    chip.textContent = label;
+    chip.onclick = () => { shopGroupMode = mode; renderShopGroupChips(); renderShoppingTab(); };
+    box.appendChild(chip);
+  });
+}
+
+function computeShoppingItems(monthKey, weekIdx, dayFilter) {
+  const m = monthsData[monthKey];
+  const weeks = buildMonthGrid(m.year, m.month);
+  const week = weeks[weekIdx];
+  let daysToUse = week ? week.filter(c => c.inMonth).map(c => c.day) : [];
+  if (dayFilter !== "all") daysToUse = daysToUse.filter(dnum => String(dnum) === String(dayFilter));
+
+  const weekKey = monthKey + "_w" + weekIdx;
+  const hidden = new Set(shopHidden[weekKey] || []);
+  const tally = {};
+  const manual = {};
+  daysToUse.forEach(dnum => {
+    const data = getDay(monthKey, dnum);
+    const allTexts = [data.desayuno, data.cena].concat(mealItems(data.comidaNinos)).concat(mealItems(data.comidaAdultos));
+    allTexts.forEach(txt => {
+      if (!txt || !txt.trim()) return;
+      const r = findRecipeByName(txt);
+      if (r && r.ingredients && r.ingredients.length) {
+        r.ingredients.forEach(ing => { if (!hidden.has(ing.toLowerCase())) tally[ing] = (tally[ing]||0) + 1; });
+      } else {
+        const name = txt.trim();
+        if (!hidden.has(name.toLowerCase())) manual[name] = (manual[name]||0) + 1;
+      }
+    });
+  });
+
+  const items = [];
+  Object.keys(tally).forEach(name => items.push({name, note: "×" + tally[name], source: "recipe"}));
+  Object.keys(manual).forEach(name => items.push({name, note: "×" + manual[name], source: "unmatched"}));
+  (shopManual[weekKey] || []).forEach(it => items.push({name: it.name, note: it.qty || "", source: "manual", id: it.id}));
+  return items;
+}
+
+function renderShoppingTab() {
+  const monthSel = document.getElementById("shopMonthSelect");
+  if (!monthSel.options.length) { renderShoppingMonthSelect(); renderShoppingWeekSelect(); }
+  populateStoreSelect(document.getElementById("shopAddStore"), "");
+  renderShopGroupChips();
+
+  const monthKey = document.getElementById("shopMonthSelect").value;
+  const m = monthsData[monthKey];
+  if (!m) return;
+  const weekIdx = parseInt(document.getElementById("shopWeekSelect").value, 10);
+  const dayFilter = document.getElementById("shopDaySelect").value;
+  const weekKey = monthKey + "_w" + weekIdx;
+  const items = computeShoppingItems(monthKey, weekIdx, dayFilter);
+
+  const groups = {};
+  items.forEach(item => {
+    const bucket = shopGroupMode === "store"
+      ? (shopStores[item.name.toLowerCase()] || "Sin asignar")
+      : categorizeIngredient(item.name);
+    (groups[bucket] = groups[bucket] || []).push(item);
+  });
+
+  const content = document.getElementById("shopContent");
+  content.innerHTML = "";
+  const order = shopGroupMode === "store"
+    ? STORES.concat(["Sin asignar"])
+    : ["Verduras y hortalizas","Frutas","Legumbres","Cereales y pasta","Carnes","Pescados y marisco","Huevos y lácteos","Despensa / condimentos","Otros"];
+
+  let anything = false;
+  order.forEach(bucket => {
+    if (!groups[bucket] || !groups[bucket].length) return;
+    anything = true;
+    const group = document.createElement("div");
+    group.className = "shop-group";
+    group.innerHTML = `<h3>${escapeHtml(bucket)}</h3>`;
+    const ul = document.createElement("ul");
+    ul.className = "shop-items";
+    groups[bucket].sort((a,b) => a.name.localeCompare(b.name)).forEach(item => {
+      const li = document.createElement("li");
+      const label = item.source === "unmatched" ? item.name + " (plato manual del menú)" : item.name;
+      li.innerHTML = `
+        <input type="checkbox">
+        <span class="name">${escapeHtml(label)}</span>
+        <span class="qty">${escapeHtml(item.note)}</span>
+        <div class="row-actions"></div>
+      `;
+      li.querySelector("input").onchange = (e) => li.classList.toggle("checked", e.target.checked);
+
+      const storeSel = document.createElement("select");
+      storeSel.className = "store-select";
+      populateStoreSelect(storeSel, shopStores[item.name.toLowerCase()] || "");
+      storeSel.onchange = async (e) => {
+        const key = item.name.toLowerCase();
+        storeSel.disabled = true;
+        const ok = await setShopStoreRemote(key, e.target.value);
+        storeSel.disabled = false;
+        if (!ok) return; // el error ya se ha avisado dentro de postToSheet()
+        renderShoppingTab();
+      };
+      li.insertBefore(storeSel, li.querySelector(".row-actions"));
+
+      const actions = li.querySelector(".row-actions");
+      if (item.source === "manual") {
+        const editBtn = document.createElement("button");
+        editBtn.textContent = "✎";
+        editBtn.title = "Editar";
+        editBtn.onclick = () => openShopEditModal(weekKey, item.id);
+        actions.appendChild(editBtn);
+      }
+      const removeBtn = document.createElement("button");
+      removeBtn.textContent = "✕";
+      removeBtn.className = "remove";
+      removeBtn.title = item.source === "manual" ? "Eliminar producto" : "Quitar de esta semana";
+      removeBtn.onclick = async () => {
+        removeBtn.disabled = true;
+        const ok = item.source === "manual"
+          ? await deleteShopItemRemote(weekKey, item.id)
+          : await hideShopItemRemote(weekKey, item.name.toLowerCase());
+        removeBtn.disabled = false;
+        if (!ok) return; // el error ya se ha avisado dentro de postToSheet()
+        renderShoppingTab();
+      };
+      actions.appendChild(removeBtn);
+
+      ul.appendChild(li);
+    });
+    group.appendChild(ul);
+    content.appendChild(group);
+  });
+
+  if (!anything) {
+    content.innerHTML = `<div class="shop-empty">No hay productos en esta lista todavía. Añade platos desde "Menú mensual" o un producto suelto arriba.</div>`;
+  }
+}
+
+document.getElementById("shopAddBtn").onclick = async () => {
+  const name = document.getElementById("shopAddName").value.trim();
+  if (!name) { alert("Ponle un nombre al producto."); return; }
+  const qty = document.getElementById("shopAddQty").value.trim();
+  const store = document.getElementById("shopAddStore").value;
+  const weekKey = currentShopWeekKey();
+  const btn = document.getElementById("shopAddBtn");
+  btn.disabled = true; btn.textContent = "Añadiendo…";
+  const ok = await addShopItemRemote(weekKey, {name, qty});
+  if (ok && store) await setShopStoreRemote(name.toLowerCase(), store);
+  btn.disabled = false; btn.textContent = "+ Añadir producto";
+  if (!ok) return; // el error ya se ha avisado dentro de postToSheet()
+  document.getElementById("shopAddName").value = "";
+  document.getElementById("shopAddQty").value = "";
+  document.getElementById("shopAddStore").value = "";
+  renderShoppingTab();
+};
+
+let editingShopItem = null;
+function openShopEditModal(weekKey, itemId) {
+  const item = (shopManual[weekKey] || []).find(x => x.id === itemId);
+  if (!item) return;
+  editingShopItem = {weekKey, itemId};
+  document.getElementById("shopEditName").value = item.name;
+  document.getElementById("shopEditQty").value = item.qty || "";
+  populateStoreSelect(document.getElementById("shopEditStore"), shopStores[item.name.toLowerCase()] || "");
+  document.getElementById("shopEditBackdrop").classList.add("show");
+}
+document.getElementById("shopEditCancel").onclick = () => document.getElementById("shopEditBackdrop").classList.remove("show");
+document.getElementById("shopEditSave").onclick = async () => {
+  if (!editingShopItem) return;
+  const {weekKey, itemId} = editingShopItem;
+  const list = shopManual[weekKey] || [];
+  const item = list.find(x => x.id === itemId);
+  if (!item) return;
+  const oldKey = item.name.toLowerCase();
+  const newName = document.getElementById("shopEditName").value.trim();
+  if (!newName) { alert("Ponle un nombre al producto."); return; }
+  const saveBtn = document.getElementById("shopEditSave");
+  saveBtn.disabled = true; saveBtn.textContent = "Guardando…";
+  const ok = await updateShopItemRemote(weekKey, {id: itemId, name: newName, qty: document.getElementById("shopEditQty").value.trim()});
+  if (ok) {
+    const store = document.getElementById("shopEditStore").value;
+    if (oldKey !== newName.toLowerCase()) await setShopStoreRemote(oldKey, "");
+    await setShopStoreRemote(newName.toLowerCase(), store);
+  }
+  saveBtn.disabled = false; saveBtn.textContent = "Guardar";
+  if (!ok) return; // el error ya se ha avisado dentro de postToSheet()
+  document.getElementById("shopEditBackdrop").classList.remove("show");
+  renderShoppingTab();
+};
+document.getElementById("shopEditDelete").onclick = async () => {
+  if (!editingShopItem) return;
+  const {weekKey, itemId} = editingShopItem;
+  const delBtn = document.getElementById("shopEditDelete");
+  delBtn.disabled = true; delBtn.textContent = "Eliminando…";
+  const ok = await deleteShopItemRemote(weekKey, itemId);
+  delBtn.disabled = false; delBtn.textContent = "Eliminar";
+  if (!ok) return; // el error ya se ha avisado dentro de postToSheet()
+  document.getElementById("shopEditBackdrop").classList.remove("show");
+  renderShoppingTab();
+};
+
+/* ---------------------------------------------------------------
+   RENDER: CONGELADOS
+--------------------------------------------------------------- */
+function renderFrozen() {
+  const content = document.getElementById("frozenContent");
+  if (!frozenItems.length) {
+    content.innerHTML = `<div class="frozen-empty">No tienes comida congelada apuntada todavía. Añade la primera arriba.</div>`;
+    return;
+  }
+  const sorted = frozenItems.slice().sort((a,b) => a.name.localeCompare(b.name));
+  let rows = sorted.map(item => `
+    <tr>
+      <td>${escapeHtml(item.name)}</td>
+      <td>${escapeHtml(item.qty || "—")}</td>
+      <td>${escapeHtml(item.date || "—")}</td>
+      <td><button class="btn danger small" data-id="${item.id}">Eliminar</button></td>
+    </tr>
+  `).join("");
+  content.innerHTML = `
+    <table class="frozen-table">
+      <thead><tr><th>Alimento</th><th>Cantidad</th><th>Fecha de congelación</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+  content.querySelectorAll("button[data-id]").forEach(btn => {
+    btn.onclick = async () => {
+      btn.disabled = true; btn.textContent = "Eliminando…";
+      const ok = await deleteFrozenRemote(btn.dataset.id);
+      if (!ok) { btn.disabled = false; btn.textContent = "Eliminar"; return; } // el error ya se ha avisado dentro de postToSheet()
+      renderFrozen();
+    };
+  });
+}
+document.getElementById("addFrozenBtn").onclick = async () => {
+  const name = document.getElementById("frozenName").value.trim();
+  if (!name) { alert("Ponle un nombre al alimento."); return; }
+  const qty = document.getElementById("frozenQty").value.trim();
+  const date = document.getElementById("frozenDate").value.trim();
+  const btn = document.getElementById("addFrozenBtn");
+  btn.disabled = true; btn.textContent = "Añadiendo…";
+  const ok = await addFrozenRemote({name, qty, date});
+  btn.disabled = false; btn.textContent = "+ Añadir";
+  if (!ok) return; // el error ya se ha avisado dentro de postToSheet()
+  document.getElementById("frozenName").value = "";
+  document.getElementById("frozenQty").value = "";
+  document.getElementById("frozenDate").value = "";
+  renderFrozen();
+};
+
+/* ---------------------------------------------------------------
+   RENDER: TEMPORADA
+--------------------------------------------------------------- */
+function currentSpanishMonthName() {
+  return MONTH_NAMES[new Date().getMonth()];
+}
+function renderSeason() {
+  const grid = document.getElementById("seasonGrid");
+  grid.innerHTML = "";
+  const current = currentSpanishMonthName();
+  SEASON_DATA.forEach(m => {
+    const card = document.createElement("div");
+    card.className = "season-card" + (m.month === current ? " current" : "");
+    card.innerHTML = `
+      <h3>${m.month} ${m.month===current ? '<span class="badge">Este mes</span>' : ""}</h3>
+      <div class="season-sub">🥦 Verduras y hortalizas</div>
+      <div class="season-items">${m.verduras.join(", ")}</div>
+      <div class="season-sub">🍎 Frutas</div>
+      <div class="season-items">${m.frutas.join(", ")}</div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+/* ---------------------------------------------------------------
+   TABS
+--------------------------------------------------------------- */
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
+    if (btn.dataset.tab === "compra") renderShoppingTab();
+    if (btn.dataset.tab === "kids") renderKidsMenu(document.getElementById("kidsMonthSelect").value || currentMonthKey);
+  };
+});
+
+/* ---------------------------------------------------------------
+   INIT
+   Nada está disponible al instante (hay que pedirlo a la Google
+   Sheet), así que la app entera espera a que lleguen los datos antes
+   de pintarse.
+--------------------------------------------------------------- */
+async function initApp() {
+  const banner = document.getElementById("recipesOfflineBanner");
+  const ok = await loadAppData();
+  if (banner) banner.style.display = ok ? "none" : "block";
+
+  renderFilterChips();
+  renderRecipes();
+  renderMonthSelect();
+  renderMonth(currentMonthKey);
+  renderKidsMonthSelect();
+  renderKidsMenu(currentMonthKey);
+  renderShoppingMonthSelect();
+  renderShoppingWeekSelect();
+  renderShoppingTab();
+  renderFrozen();
+  renderSeason();
+
+  const loadingOverlay = document.getElementById("appLoadingOverlay");
+  if (loadingOverlay) loadingOverlay.remove();
+}
+initApp();
+</script>
+</body>
+</html>
