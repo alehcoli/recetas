@@ -9,71 +9,60 @@ entrar desde vuestros propios dispositivos y ver siempre los mismos datos.
 
 ```
 index.html  ──fetch/POST──>  Google Apps Script (Web App)  ──lee/escribe──>  Google Sheet
-   (GitHub Pages)                apps-script/Code.gs
+ (Hostinger)                    apps-script/Code.gs
 ```
 
-- **`index.html`** — toda la app (sin build, sin dependencias). Se aloja en
-  GitHub Pages para tener una URL fija que ambos podáis abrir.
-- **`apps-script/Code.gs`** — backend. Vive dentro de tu Google Sheet
-  (Extensiones → Apps Script) y se despliega como "Web App". Expone un único
-  endpoint: `GET` para leer todo, `POST` con `{action, ...}` para cada
-  cambio (crear/editar receta, guardar un mes de menú, añadir un producto a
-  la compra, etc).
-- **Pestañas de la Sheet**: `Recetas`, `Menu`, `Congelados`, `CompraExtra`,
-  `CompraSupermercados`, `CompraOcultos`. Se pueden editar también a mano
-  directamente en la hoja — la app las vuelve a leer en cada recarga.
+- **`index.html`** — toda la app (sin build, sin dependencias). El código
+  fuente vive en [github.com/alehcoli/recetas](https://github.com/alehcoli/recetas)
+  y se sirve desde tu hosting de Hostinger.
+- **`apps-script/Code.gs`** — backend, ya desplegado. Vive dentro de la
+  Google Sheet (Extensiones → Apps Script) como Web App. Protocolo:
+  `GET` devuelve todo el estado; `POST` recibe `{resource, action, ...}`
+  para cada cambio (`recipe`, `day`, `frozen`, `shopStore`, `shopManual`,
+  `shopHidden`).
+- **Pestañas de la Sheet**: `Recetas`, `MenuDias`, `Congelados`,
+  `CompraTiendas`, `CompraManual`, `CompraOculta`. Se pueden editar también
+  a mano directamente en la hoja — la app las vuelve a leer en cada recarga.
 - Si en algún momento no hay conexión con la Sheet, la app muestra la
   última copia guardada en `localStorage` del navegador (con un aviso) y no
   permite guardar cambios hasta que se recupere la conexión.
+- La página lleva `<meta name="robots" content="noindex,nofollow">` y un
+  `robots.txt` que bloquea todo rastreo, para que no aparezca en buscadores
+  — pero sigue siendo accesible para cualquiera que tenga el enlace directo.
 
 ## Puesta en marcha
 
-### 1. Backend (Google Apps Script)
+### 1. Backend (Google Apps Script) — ya hecho
 
-1. Abre tu Google Sheet del recetario.
-2. Extensiones → Apps Script.
-3. Sustituye el contenido por el de [`apps-script/Code.gs`](apps-script/Code.gs)
-   de este proyecto.
-   - ⚠️ Antes de sustituir: si ya tienes recetas guardadas, revisa la
-     sección "RECETAS" del script — puede que haya que ajustar las columnas
-     al formato real de tu pestaña actual (ver nota al final de este README).
-4. Guarda. Opcional: en el desplegable de funciones (▶) elige `setupSheets`
-   y ejecútala una vez para crear de golpe las pestañas nuevas.
-5. Implementar → Nueva implementación → tipo "Aplicación web".
-   - Ejecutar como: **Yo**
-   - Quién tiene acceso: **Cualquiera** (así tu mujer no necesita iniciar
-     sesión de Google para usar la app; los datos no son sensibles).
-6. Autoriza los permisos que pida Google.
-7. Copia la URL que te da (termina en `/exec`).
-   - Si ya tenías un despliegue anterior (la URL ya usada en `index.html`),
-     usa "Gestionar implementaciones" → editar (lápiz) → **Nueva versión**,
-     para que la URL no cambie y no haga falta tocar `index.html`.
-   - Si es la primera vez, pega esa URL en `index.html`, en la constante
-     `SHEET_API_URL` (dentro de `<script>`).
+El Web App ya está desplegado y probado en vivo; `SHEET_API_URL` en
+`index.html` ya apunta a él. Si en el futuro cambias el código del script,
+recuerda: Implementar → Gestionar implementaciones → editar (lápiz) →
+**Nueva versión** (no "nueva implementación", o la URL cambiaría).
 
-### 2. Frontend (GitHub Pages)
+### 2. Frontend (Hostinger)
 
-1. Crea un repositorio en GitHub (puede ser privado) y sube este proyecto:
-   ```bash
-   git remote add origin https://github.com/<tu-usuario>/<tu-repo>.git
-   git branch -M main
-   git push -u origin main
-   ```
-2. En GitHub: Settings → Pages → Source: "Deploy from a branch" → rama
-   `main`, carpeta `/ (root)`.
-3. En un par de minutos la app estará en
-   `https://<tu-usuario>.github.io/<tu-repo>/`. Comparte ese enlace con tu
-   mujer (puede guardarlo como acceso directo en el móvil).
+Dos formas de subir `index.html` (+ `robots.txt`) a tu hosting:
 
-Cada vez que se haga `git push` a `main`, GitHub Pages actualiza la web
-sola — no hace falta ningún paso extra.
+**A. Manual (rápido, sin configurar nada extra)**
+1. hPanel → Websites → tu sitio → **Administrador de archivos**.
+2. Entra en `public_html` (o la subcarpeta/subdominio donde quieras
+   colgarlo, p. ej. `public_html/recetas`).
+3. Sube `index.html` y `robots.txt` de este proyecto.
+4. Listo — la URL será la de tu dominio (o subdominio/subcarpeta elegida).
+
+**B. Git (recomendado si vas a seguir pidiéndome cambios)**
+1. hPanel → Websites → tu sitio → **Avanzado → Git**.
+2. Repositorio: `https://github.com/alehcoli/recetas`, rama `main`,
+   directorio de instalación: `public_html` (o la subcarpeta elegida).
+3. Cada vez que yo haga `git push` a `main`, pulsa "Deploy" en esa misma
+   pantalla de hPanel para publicar los cambios (o revisa si tu plan
+   permite marcarlo como automático).
+
+Con cualquiera de las dos, comparte la URL resultante con tu mujer —
+funciona bien como acceso directo guardado en el móvil.
 
 ## Nota sobre las recetas existentes
 
-El backend de este proyecto (`apps-script/Code.gs`) asume que la pestaña
-`Recetas` tiene una columna por campo (id, name, short, meals, cats, desc,
-ingredients, allergens, source, url, custom). Si tu Google Apps Script
-actual guarda las recetas con otras columnas o en otro formato, comparte
-ese script (o la fila de cabecera de la pestaña `Recetas`) para adaptar
-`RECIPE_HEADERS` / `rowToRecipe` / `recipeToRow` antes de desplegar, y así
-no perder las recetas que ya tenéis guardadas.
+`apps-script/Code.gs` es el script que ya tenías desplegado (no lo hemos
+tocado) — ya sabe leer y escribir la pestaña `Recetas` en el formato real
+que usáis.
