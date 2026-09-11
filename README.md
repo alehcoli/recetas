@@ -9,12 +9,12 @@ entrar desde vuestros propios dispositivos y ver siempre los mismos datos.
 
 ```
 index.html  ──fetch/POST──>  Google Apps Script (Web App)  ──lee/escribe──>  Google Sheet
- (Hostinger)                    apps-script/Code.gs
+(GitHub Pages)                  apps-script/Code.gs
 ```
 
 - **`index.html`** — toda la app (sin build, sin dependencias). El código
   fuente vive en [github.com/alehcoli/recetas](https://github.com/alehcoli/recetas)
-  y se sirve desde tu hosting de Hostinger.
+  y se sirve gratis desde GitHub Pages (el repo es público).
 - **`apps-script/Code.gs`** — backend, ya desplegado. Vive dentro de la
   Google Sheet (Extensiones → Apps Script) como Web App. Protocolo:
   `GET` devuelve todo el estado; `POST` recibe `{resource, action, ...}`
@@ -39,27 +39,20 @@ El Web App ya está desplegado y probado en vivo; `SHEET_API_URL` en
 recuerda: Implementar → Gestionar implementaciones → editar (lápiz) →
 **Nueva versión** (no "nueva implementación", o la URL cambiaría).
 
-### 2. Frontend (Hostinger)
+### 2. Frontend (GitHub Pages)
 
-Dos formas de subir `index.html` (+ `robots.txt`) a tu hosting:
+El repo es público, así que GitHub Pages es gratis y no hace falta ningún
+hosting externo:
 
-**A. Manual (rápido, sin configurar nada extra)**
-1. hPanel → Websites → tu sitio → **Administrador de archivos**.
-2. Entra en `public_html` (o la subcarpeta/subdominio donde quieras
-   colgarlo, p. ej. `public_html/recetas`).
-3. Sube `index.html` y `robots.txt` de este proyecto.
-4. Listo — la URL será la de tu dominio (o subdominio/subcarpeta elegida).
+1. En GitHub → **Settings → Pages**.
+2. En "Build and deployment" → Source: **Deploy from a branch**.
+3. Branch: **`main`**, carpeta **`/ (root)`** → **Save**.
+4. GitHub tarda uno o dos minutos en publicar. La URL será
+   `https://alehcoli.github.io/recetas/`.
 
-**B. Git (recomendado si vas a seguir pidiéndome cambios)**
-1. hPanel → Websites → tu sitio → **Avanzado → Git**.
-2. Repositorio: `https://github.com/alehcoli/recetas`, rama `main`,
-   directorio de instalación: `public_html` (o la subcarpeta elegida).
-3. Cada vez que yo haga `git push` a `main`, pulsa "Deploy" en esa misma
-   pantalla de hPanel para publicar los cambios (o revisa si tu plan
-   permite marcarlo como automático).
-
-Con cualquiera de las dos, comparte la URL resultante con tu mujer —
-funciona bien como acceso directo guardado en el móvil.
+Cada `git push` a `main` vuelve a publicar automáticamente — no hay que
+hacer nada más. Comparte esa URL con tu mujer, funciona bien como acceso
+directo guardado en el móvil.
 
 ## Nota sobre las recetas existentes
 
