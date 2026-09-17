@@ -22,9 +22,14 @@ index.html  ──fetch/POST──>  Google Apps Script (Web App)  ──lee/esc
   `importUrl`).
   - `importUrl`: botón "Importar" del modal de añadir receta. Descarga la
     URL en el propio servidor (sin líos de CORS) y busca datos
-    schema.org/Recipe (`<script type="application/ld+json">`). Funciona
-    con blogs de recetas; no funciona con Instagram/redes sociales, que no
-    llevan ese marcado — en ese caso hay que rellenar a mano.
+    schema.org/Recipe (`<script type="application/ld+json">`). Si la página
+    marca varias recetas a la vez (poco común, pero algunos sitios lo
+    hacen), crea una entrada por cada una directamente — sin tipo de
+    comida/categoría, que hay que rellenar luego editándolas, porque ese
+    dato no viene en la página. Funciona con blogs de recetas; no funciona
+    con Instagram/redes sociales, ni con artículos sin ese marcado (p. ej.
+    El Comidista), que no llevan datos estructurados — en esos casos hay
+    que rellenar a mano o pedirle a Claude que lea el artículo y las añada.
 - **Pestañas de la Sheet**: `Recetas`, `MenuDias`, `Congelados`,
   `CompraTiendas`, `CompraManual`, `CompraOculta`. Se pueden editar también
   a mano directamente en la hoja — la app las vuelve a leer en cada recarga.

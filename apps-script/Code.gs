@@ -378,15 +378,20 @@ function handleImportUrl_(payload) {
     return jsonOut_({ ok: false, error: "No se ha podido descargar esa URL: " + err });
   }
 
-  const recipe = extractRecipeFromHtml_(html);
-  if (!recipe) {
+  const recipes = extractRecipesFromHtml_(html);
+  if (!recipes.length) {
     return jsonOut_({ ok: false, error: "No he encontrado datos de receta estructurados en esa página." });
   }
-  return jsonOut_({ ok: true, recipe: recipe });
+  // Una sola receta: se devuelve para que se revise en el formulario antes de guardar.
+  // Varias (p. ej. un artículo con varias recetas marcadas): se devuelven todas, para
+  // crear una entrada por cada una directamente.
+  if (recipes.length === 1) return jsonOut_({ ok: true, recipe: recipes[0] });
+  return jsonOut_({ ok: true, recipes: recipes });
 }
 
-function extractRecipeFromHtml_(html) {
+function extractRecipesFromHtml_(html) {
   const scriptRegex = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  const nodes = [];
   let match;
   while ((match = scriptRegex.exec(html)) !== null) {
     let data;
@@ -395,28 +400,23 @@ function extractRecipeFromHtml_(html) {
     } catch (e) {
       continue; // bloque JSON-LD mal formado; probamos el siguiente
     }
-    const found = findRecipeNode_(data);
-    if (found) return normalizeRecipe_(found);
+    findAllRecipeNodes_(data, nodes);
   }
-  return null;
+  return nodes.map(normalizeRecipe_);
 }
 
-/** Busca recursivamente un nodo cuyo @type incluya "Recipe" (schema.org puede anidarlo en @graph o en arrays). */
-function findRecipeNode_(node) {
-  if (!node) return null;
+/** Busca recursivamente TODOS los nodos cuyo @type incluya "Recipe" (schema.org puede anidarlo en @graph, arrays, o traer varias recetas en una misma página). */
+function findAllRecipeNodes_(node, results) {
+  if (!node) return;
   if (Array.isArray(node)) {
-    for (let i = 0; i < node.length; i++) {
-      const found = findRecipeNode_(node[i]);
-      if (found) return found;
-    }
-    return null;
+    node.forEach(n => findAllRecipeNodes_(n, results));
+    return;
   }
-  if (typeof node !== "object") return null;
+  if (typeof node !== "object") return;
   const type = node["@type"];
   const isRecipe = type === "Recipe" || (Array.isArray(type) && type.indexOf("Recipe") !== -1);
-  if (isRecipe) return node;
-  if (node["@graph"]) return findRecipeNode_(node["@graph"]);
-  return null;
+  if (isRecipe) results.push(node);
+  if (node["@graph"]) findAllRecipeNodes_(node["@graph"], results);
 }
 
 function normalizeRecipe_(node) {

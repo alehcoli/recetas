@@ -1138,9 +1138,31 @@ document.getElementById("importUrlBtn").onclick = async () => {
   status.textContent = "Buscando datos de la receta…"; status.style.color = "var(--text-soft)";
   const res = await callSheetApi({ resource: "importUrl", action: "fetch", url });
   btn.disabled = false; btn.textContent = "Importar";
-  if (!res || !res.ok || !res.recipe) {
+  if (!res || !res.ok || (!res.recipe && !res.recipes)) {
     status.textContent = (res && res.error) || "No se ha podido contactar con el servidor. Comprueba tu conexión e inténtalo de nuevo.";
     status.style.color = "#b23";
+    return;
+  }
+  // Varias recetas encontradas en la misma página: se crean todas directamente
+  // (no hay un único formulario que rellenar) y luego hay que editarlas para
+  // ponerles tipo de comida y categoría, que no vienen en los datos de la página.
+  if (res.recipes) {
+    status.textContent = "Encontradas " + res.recipes.length + " recetas. Importando…";
+    let created = 0;
+    for (const found of res.recipes) {
+      if (!found.name) continue;
+      const ok = await createRecipeRemote({
+        name: found.name, short: "", meals: [], cats: [],
+        desc: found.desc || "", ingredients: found.ingredients || [], allergens: [],
+        source: "Importada desde " + url, url: url, custom: true,
+      });
+      if (ok) created++;
+    }
+    document.getElementById("modalBackdrop").classList.remove("show");
+    renderFilterChips();
+    renderRecipes();
+    refreshRecipeDatalist();
+    alert("Se han añadido " + created + " recetas nuevas. Edita cada una (✎ Editar) para elegir tipo de comida y categoría, que la página no incluía.");
     return;
   }
   const found = res.recipe;
