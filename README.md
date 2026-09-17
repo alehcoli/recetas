@@ -9,17 +9,22 @@ entrar desde vuestros propios dispositivos y ver siempre los mismos datos.
 
 ```
 index.html  ──fetch/POST──>  Google Apps Script (Web App)  ──lee/escribe──>  Google Sheet
- (Hostinger)                    apps-script/Code.gs
+(GitHub Pages)                  apps-script/Code.gs
 ```
 
-- **`index.html`** — toda la app (sin build, sin dependencias). El código
-  fuente vive en [github.com/alehcoli/recetas](https://github.com/alehcoli/recetas)
-  y se sirve desde tu hosting de Hostinger.
-- **`apps-script/Code.gs`** — backend, ya desplegado. Vive dentro de la
-  Google Sheet (Extensiones → Apps Script) como Web App. Protocolo:
-  `GET` devuelve todo el estado; `POST` recibe `{resource, action, ...}`
-  para cada cambio (`recipe`, `day`, `frozen`, `shopStore`, `shopManual`,
-  `shopHidden`).
+- **`index.html`** — toda la app (sin build, sin dependencias). Se despliega
+  automáticamente vía GitHub Pages en cada `git push` a `main`:
+  `https://alehcoli.github.io/recetas/`.
+- **`apps-script/Code.gs`** — backend. Vive dentro de la Google Sheet
+  (Extensiones → Apps Script) como Web App. Protocolo: `GET` devuelve todo
+  el estado; `POST` recibe `{resource, action, ...}` para cada cambio
+  (`recipe`, `day`, `frozen`, `shopStore`, `shopManual`, `shopHidden`,
+  `importUrl`).
+  - `importUrl`: botón "Importar" del modal de añadir receta. Descarga la
+    URL en el propio servidor (sin líos de CORS) y busca datos
+    schema.org/Recipe (`<script type="application/ld+json">`). Funciona
+    con blogs de recetas; no funciona con Instagram/redes sociales, que no
+    llevan ese marcado — en ese caso hay que rellenar a mano.
 - **Pestañas de la Sheet**: `Recetas`, `MenuDias`, `Congelados`,
   `CompraTiendas`, `CompraManual`, `CompraOculta`. Se pueden editar también
   a mano directamente en la hoja — la app las vuelve a leer en cada recarga.
@@ -32,34 +37,20 @@ index.html  ──fetch/POST──>  Google Apps Script (Web App)  ──lee/esc
 
 ## Puesta en marcha
 
-### 1. Backend (Google Apps Script) — ya hecho
+### 1. Backend (Google Apps Script)
 
-El Web App ya está desplegado y probado en vivo; `SHEET_API_URL` en
-`index.html` ya apunta a él. Si en el futuro cambias el código del script,
-recuerda: Implementar → Gestionar implementaciones → editar (lápiz) →
-**Nueva versión** (no "nueva implementación", o la URL cambiaría).
+Cada vez que cambie `apps-script/Code.gs` (como con la función `importUrl`),
+hay que pegarlo en el editor de verdad y publicar una nueva versión:
 
-### 2. Frontend (Hostinger)
+1. Abre tu Google Sheet → Extensiones → Apps Script.
+2. Sustituye todo el contenido por el de `apps-script/Code.gs` de este repo.
+3. Guarda. Implementar → Gestionar implementaciones → editar (lápiz) →
+   **Nueva versión** → Implementar (no "nueva implementación", o la URL
+   cambiaría y habría que actualizar `SHEET_API_URL` en `index.html`).
 
-Dos formas de subir `index.html` (+ `robots.txt`) a tu hosting:
+### 2. Frontend (GitHub Pages) — ya hecho
 
-**A. Manual (rápido, sin configurar nada extra)**
-1. hPanel → Websites → tu sitio → **Administrador de archivos**.
-2. Entra en `public_html` (o la subcarpeta/subdominio donde quieras
-   colgarlo, p. ej. `public_html/recetas`).
-3. Sube `index.html` y `robots.txt` de este proyecto.
-4. Listo — la URL será la de tu dominio (o subdominio/subcarpeta elegida).
-
-**B. Git (recomendado si vas a seguir pidiéndome cambios)**
-1. hPanel → Websites → tu sitio → **Avanzado → Git**.
-2. Repositorio: `https://github.com/alehcoli/recetas`, rama `main`,
-   directorio de instalación: `public_html` (o la subcarpeta elegida).
-3. Cada vez que yo haga `git push` a `main`, pulsa "Deploy" en esa misma
-   pantalla de hPanel para publicar los cambios (o revisa si tu plan
-   permite marcarlo como automático).
-
-Con cualquiera de las dos, comparte la URL resultante con tu mujer —
-funciona bien como acceso directo guardado en el móvil.
+Se despliega solo en cada `git push` a `main`. Nada que hacer aquí.
 
 ## Nota sobre las recetas existentes
 

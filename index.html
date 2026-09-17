@@ -361,6 +361,15 @@
 <div class="modal-backdrop" id="modalBackdrop">
   <div class="modal">
     <h2 id="recipeModalTitle">Añadir receta</h2>
+    <div class="field" id="importUrlField">
+      <label>Importar desde una URL (opcional)</label>
+      <div class="field-row">
+        <input type="text" id="importUrlInput" placeholder="https://... (blog de recetas)" style="flex:1;">
+        <button class="btn secondary" id="importUrlBtn" style="flex:0 0 auto;">Importar</button>
+      </div>
+      <div class="modal-sub" style="margin-top:4px;">Funciona con blogs de recetas que incluyan datos estructurados. No funciona con Instagram ni otras redes sociales — en ese caso, rellena a mano.</div>
+      <div id="importUrlStatus" style="font-size:12.5px; margin-top:4px;"></div>
+    </div>
     <div class="field">
       <label>Nombre de la receta</label>
       <input type="text" id="newName" placeholder="Ej. Crema de calabacín">
@@ -792,7 +801,8 @@ async function loadAppData() {
 /** POST genérico a la hoja. Usa text/plain para evitar el preflight CORS
  *  que Apps Script no sabe responder (una petición con Content-Type
  *  text/plain se considera "simple" y el navegador no la bloquea antes). */
-async function postToSheet(payload) {
+/** Llamada de bajo nivel, sin avisos: devuelve la respuesta tal cual (incluido {ok:false,...}), o null si no hubo ni respuesta. */
+async function callSheetApi(payload) {
   try {
     const res = await fetch(SHEET_API_URL, {
       method: "POST",
@@ -800,14 +810,23 @@ async function postToSheet(payload) {
       body: JSON.stringify(payload)
     });
     if (!res.ok) throw new Error("HTTP " + res.status);
-    const data = await res.json();
-    if (!data || data.ok !== true) throw new Error((data && data.error) || "Respuesta sin confirmar");
-    return data;
+    return await res.json();
   } catch (err) {
-    console.error("Error guardando en la Google Sheet:", err);
-    alert("No se ha podido guardar el cambio en Google Sheets. Comprueba tu conexión e inténtalo de nuevo.\n\n(" + err.message + ")");
+    console.error("Error llamando a la Google Sheet:", err);
     return null;
   }
+}
+
+/** Para cambios (crear/editar/borrar): además avisa con un alert() si falla. */
+async function postToSheet(payload) {
+  const data = await callSheetApi(payload);
+  if (!data || data.ok !== true) {
+    const msg = (data && data.error) || "sin respuesta del servidor";
+    console.error("Error guardando en la Google Sheet:", msg);
+    alert("No se ha podido guardar el cambio en Google Sheets. Comprueba tu conexión e inténtalo de nuevo.\n\n(" + msg + ")");
+    return null;
+  }
+  return data;
 }
 
 async function createRecipeRemote(recipe) {
@@ -1085,6 +1104,9 @@ document.getElementById("addRecipeBtn").onclick = () => {
   document.getElementById("newIngredients").value = "";
   document.getElementById("newAllergens").value = "";
   document.getElementById("newUrl").value = "";
+  document.getElementById("importUrlInput").value = "";
+  document.getElementById("importUrlStatus").textContent = "";
+  document.getElementById("importUrlField").style.display = "block";
   renderModalChips();
   document.getElementById("modalBackdrop").classList.add("show");
 };
@@ -1094,6 +1116,7 @@ function openEditRecipeModal(id) {
   editingRecipeId = id;
   newMealSel = new Set(r.meals || []);
   newCatSel = new Set(r.cats || []);
+  document.getElementById("importUrlField").style.display = "none";
   document.getElementById("recipeModalTitle").textContent = "Editar receta";
   document.getElementById("newName").value = r.name || "";
   document.getElementById("newShort").value = r.short || "";
@@ -1105,6 +1128,30 @@ function openEditRecipeModal(id) {
   document.getElementById("modalBackdrop").classList.add("show");
 }
 document.getElementById("cancelModal").onclick = () => document.getElementById("modalBackdrop").classList.remove("show");
+
+document.getElementById("importUrlBtn").onclick = async () => {
+  const url = document.getElementById("importUrlInput").value.trim();
+  const status = document.getElementById("importUrlStatus");
+  if (!url) { status.textContent = "Pega antes un enlace."; status.style.color = "#b23"; return; }
+  const btn = document.getElementById("importUrlBtn");
+  btn.disabled = true; btn.textContent = "Importando…";
+  status.textContent = "Buscando datos de la receta…"; status.style.color = "var(--text-soft)";
+  const res = await callSheetApi({ resource: "importUrl", action: "fetch", url });
+  btn.disabled = false; btn.textContent = "Importar";
+  if (!res || !res.ok || !res.recipe) {
+    status.textContent = (res && res.error) || "No se ha podido contactar con el servidor. Comprueba tu conexión e inténtalo de nuevo.";
+    status.style.color = "#b23";
+    return;
+  }
+  const found = res.recipe;
+  if (found.name) document.getElementById("newName").value = found.name;
+  if (found.desc) document.getElementById("newDesc").value = found.desc;
+  if (found.ingredients && found.ingredients.length) document.getElementById("newIngredients").value = found.ingredients.join(", ");
+  document.getElementById("newUrl").value = url;
+  status.textContent = "Importado. Revisa los campos, elige tipo de comida/categoría y guarda.";
+  status.style.color = "var(--green-dark)";
+};
+
 document.getElementById("saveRecipe").onclick = async () => {
   const name = document.getElementById("newName").value.trim();
   if (!name) { alert("Ponle un nombre a la receta."); return; }

@@ -211,6 +211,7 @@ function doPost(e) {
       case "shopManual": return handleShopManual_(payload);
       case "shopHidden": return handleShopHidden_(payload);
       case "migrate": return handleMigrate_(payload);
+      case "importUrl": return handleImportUrl_(payload);
       default: return jsonOut_({ ok: false, error: "Recurso desconocido: " + resource });
     }
   } catch (err) {
@@ -352,4 +353,92 @@ function handleMigrate_(payload) {
     results[key] = rows.length;
   });
   return jsonOut_({ ok: true, migrated: results });
+}
+
+/**
+ * Importar receta desde una URL — botón "Importar" del modal "Añadir receta".
+ * Descarga la página en el propio servidor (Apps Script no tiene problemas
+ * de CORS) y busca datos estructurados schema.org/Recipe en bloques
+ * <script type="application/ld+json">, que llevan muchos blogs de recetas.
+ * No funciona con Instagram u otras redes sociales, que no incluyen ese
+ * marcado — en ese caso se avisa al usuario para que rellene a mano.
+ */
+function handleImportUrl_(payload) {
+  const url = payload.url;
+  if (!url) return jsonOut_({ ok: false, error: "Falta la URL." });
+
+  let html;
+  try {
+    const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: true });
+    if (res.getResponseCode() >= 400) {
+      return jsonOut_({ ok: false, error: "La página respondió con un error (" + res.getResponseCode() + ")." });
+    }
+    html = res.getContentText();
+  } catch (err) {
+    return jsonOut_({ ok: false, error: "No se ha podido descargar esa URL: " + err });
+  }
+
+  const recipe = extractRecipeFromHtml_(html);
+  if (!recipe) {
+    return jsonOut_({ ok: false, error: "No he encontrado datos de receta estructurados en esa página." });
+  }
+  return jsonOut_({ ok: true, recipe: recipe });
+}
+
+function extractRecipeFromHtml_(html) {
+  const scriptRegex = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let match;
+  while ((match = scriptRegex.exec(html)) !== null) {
+    let data;
+    try {
+      data = JSON.parse(match[1].trim());
+    } catch (e) {
+      continue; // bloque JSON-LD mal formado; probamos el siguiente
+    }
+    const found = findRecipeNode_(data);
+    if (found) return normalizeRecipe_(found);
+  }
+  return null;
+}
+
+/** Busca recursivamente un nodo cuyo @type incluya "Recipe" (schema.org puede anidarlo en @graph o en arrays). */
+function findRecipeNode_(node) {
+  if (!node) return null;
+  if (Array.isArray(node)) {
+    for (let i = 0; i < node.length; i++) {
+      const found = findRecipeNode_(node[i]);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (typeof node !== "object") return null;
+  const type = node["@type"];
+  const isRecipe = type === "Recipe" || (Array.isArray(type) && type.indexOf("Recipe") !== -1);
+  if (isRecipe) return node;
+  if (node["@graph"]) return findRecipeNode_(node["@graph"]);
+  return null;
+}
+
+function normalizeRecipe_(node) {
+  const name = plainText_(node.name);
+  const ingredients = (node.recipeIngredient || node.ingredients || []).map(plainText_).filter(Boolean);
+  const desc = plainText_(node.description) || instructionsToText_(node.recipeInstructions);
+  return { name: name, desc: desc, ingredients: ingredients };
+}
+
+function instructionsToText_(instructions) {
+  if (!instructions) return "";
+  if (typeof instructions === "string") return plainText_(instructions);
+  if (Array.isArray(instructions)) {
+    return instructions.map(step => {
+      if (typeof step === "string") return plainText_(step);
+      return plainText_(step.text || step.name || "");
+    }).filter(Boolean).join(" ");
+  }
+  return "";
+}
+
+function plainText_(v) {
+  if (!v) return "";
+  return String(v).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
