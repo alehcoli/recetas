@@ -19,7 +19,7 @@ index.html  ──fetch/POST──>  Google Apps Script (Web App)  ──lee/esc
   Google Sheet (Extensiones → Apps Script) como Web App. Protocolo:
   `GET` devuelve todo el estado; `POST` recibe `{resource, action, ...}`
   para cada cambio (`recipe`, `day`, `frozen`, `shopStore`, `shopManual`,
-  `shopHidden`).
+  `shopHidden`, `importUrl`).
 - **Pestañas de la Sheet**: `Recetas`, `MenuDias`, `Congelados`,
   `CompraTiendas`, `CompraManual`, `CompraOculta`. Se pueden editar también
   a mano directamente en la hoja — la app las vuelve a leer en cada recarga.
@@ -39,6 +39,11 @@ El Web App ya está desplegado y probado en vivo; `SHEET_API_URL` en
 recuerda: Implementar → Gestionar implementaciones → editar (lápiz) →
 **Nueva versión** (no "nueva implementación", o la URL cambiaría).
 
+⚠️ Este cambio concreto (importar receta desde URL) sí toca
+`apps-script/Code.gs` — para que funcione tienes que volver a pegar el
+código actualizado en el editor de Apps Script y publicar una **Nueva
+versión** siguiendo esos mismos pasos.
+
 ### 2. Frontend (GitHub Pages)
 
 El repo es público, así que GitHub Pages es gratis y no hace falta ningún
@@ -53,6 +58,23 @@ hosting externo:
 Cada `git push` a `main` vuelve a publicar automáticamente — no hay que
 hacer nada más. Comparte esa URL con tu mujer, funciona bien como acceso
 directo guardado en el móvil.
+
+## Importar receta desde una URL
+
+En el formulario "Añadir receta" hay un campo para pegar la URL de una
+receta (blog, web de cocina...) y un botón **"Rellenar desde URL"**. Al
+pulsarlo, el propio Web App de Apps Script descarga esa página en el
+servidor (así se evita el bloqueo de CORS que tendría el navegador) y
+busca los datos estructurados `schema.org/Recipe` que casi todos los
+blogs de cocina incluyen para posicionar bien en Google: nombre,
+descripción e ingredientes. Rellena esos campos automáticamente, pero
+**no guarda nada todavía** — hay que revisar el resultado (sobre todo
+tipo de comida, categoría y alérgenos, que no vienen en ese estándar) y
+pulsar "Guardar receta" como con cualquier receta añadida a mano.
+
+Si la página no tiene esos datos estructurados (algunas redes sociales,
+o webs que los omiten), sale un aviso y no rellena nada — en ese caso
+toca copiar los datos a mano como hasta ahora.
 
 ## Nota sobre las recetas existentes
 

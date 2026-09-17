@@ -211,6 +211,7 @@ function doPost(e) {
       case "shopManual": return handleShopManual_(payload);
       case "shopHidden": return handleShopHidden_(payload);
       case "migrate": return handleMigrate_(payload);
+      case "importUrl": return handleImportUrl_(payload);
       default: return jsonOut_({ ok: false, error: "Recurso desconocido: " + resource });
     }
   } catch (err) {
@@ -333,6 +334,90 @@ function handleShopHidden_(payload) {
     return jsonOut_({ ok: true });
   }
   return jsonOut_({ ok: false, error: "Acción desconocida: " + action });
+}
+
+/**
+ * Importar receta desde una URL: descarga la página (sin las restricciones
+ * de CORS que tiene el navegador, porque esto corre en el servidor) y busca
+ * los datos estructurados schema.org/Recipe que casi todos los blogs de
+ * cocina incluyen para salir bien en Google. Solo devuelve los datos para
+ * que se revisen en el formulario — no guarda nada en la Sheet todavía.
+ */
+function handleImportUrl_(payload) {
+  const url = payload.url;
+  if (!url) return jsonOut_({ ok: false, error: "Falta la URL" });
+
+  let html;
+  try {
+    const resp = UrlFetchApp.fetch(url, {
+      muteHttpExceptions: true,
+      followRedirects: true,
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; RecetarioBot/1.0)" },
+    });
+    if (resp.getResponseCode() >= 400) {
+      return jsonOut_({ ok: false, error: "La página respondió con error " + resp.getResponseCode() });
+    }
+    html = resp.getContentText();
+  } catch (err) {
+    return jsonOut_({ ok: false, error: "No se pudo descargar la página: " + err });
+  }
+
+  const recipeJson = extractRecipeJsonLd_(html);
+  if (!recipeJson) {
+    return jsonOut_({ ok: false, error: "No se encontraron datos de receta en esa página. Prueba a rellenar los campos a mano." });
+  }
+
+  const hostname = (url.match(/^https?:\/\/([^\/]+)/) || [null, ""])[1];
+  const ingredients = toArray_(recipeJson.recipeIngredient || recipeJson.ingredients)
+    .map(cleanText_).filter(Boolean);
+  const recipe = {
+    name: cleanText_(recipeJson.name),
+    desc: cleanText_(recipeJson.description),
+    ingredients: ingredients,
+    allergens: [],
+    url: cleanText_(recipeJson.url) || url,
+    source: hostname ? ("Importada de " + hostname) : "Importada de URL",
+  };
+  return jsonOut_({ ok: true, recipe: recipe });
+}
+
+function toArray_(v) { return Array.isArray(v) ? v : (v ? [v] : []); }
+
+function cleanText_(v) {
+  if (v === undefined || v === null) return "";
+  if (typeof v === "object") return v.name ? String(v.name).trim() : "";
+  return String(v).replace(/\s+/g, " ").trim();
+}
+
+// Busca en el HTML bloques <script type="application/ld+json"> y, dentro de
+// ellos, un nodo Recipe (puede venir suelto, en un array, o anidado en @graph).
+function extractRecipeJsonLd_(html) {
+  const re = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let m;
+  while ((m = re.exec(html)) !== null) {
+    let data;
+    try { data = JSON.parse(m[1]); } catch (e) { continue; }
+    const found = findRecipeNode_(data);
+    if (found) return found;
+  }
+  return null;
+}
+
+function findRecipeNode_(node) {
+  if (!node) return null;
+  if (Array.isArray(node)) {
+    for (let i = 0; i < node.length; i++) {
+      const found = findRecipeNode_(node[i]);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (typeof node !== "object") return null;
+  const type = node["@type"];
+  const isRecipe = type === "Recipe" || (Array.isArray(type) && type.indexOf("Recipe") !== -1);
+  if (isRecipe) return node;
+  if (node["@graph"]) return findRecipeNode_(node["@graph"]);
+  return null;
 }
 
 /**

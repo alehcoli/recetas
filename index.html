@@ -361,6 +361,13 @@
 <div class="modal-backdrop" id="modalBackdrop">
   <div class="modal">
     <h2 id="recipeModalTitle">Añadir receta</h2>
+    <div class="field" id="importUrlField">
+      <label>Importar desde una URL (opcional)</label>
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="importUrlInput" placeholder="https://... (blog, receta online)" style="flex:1;">
+        <button class="btn secondary" id="importUrlBtn" type="button">Rellenar desde URL</button>
+      </div>
+    </div>
     <div class="field">
       <label>Nombre de la receta</label>
       <input type="text" id="newName" placeholder="Ej. Crema de calabacín">
@@ -831,6 +838,28 @@ async function deleteRecipeRemote(id) {
   return true;
 }
 
+/** Pide al backend que descargue una URL y extraiga los datos de receta
+ *  (schema.org/Recipe) que casi todos los blogs de cocina incluyen. No
+ *  guarda nada todavía: solo devuelve los campos para revisarlos en el
+ *  formulario antes de pulsar "Guardar receta". */
+async function importRecipeFromUrl(url) {
+  try {
+    const res = await fetch(SHEET_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ resource: "importUrl", url })
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    if (!data || data.ok !== true) throw new Error((data && data.error) || "No se pudo importar la receta");
+    return data.recipe;
+  } catch (err) {
+    console.error("Error importando receta desde URL:", err);
+    alert("No se ha podido importar la receta desde esa URL.\n\n(" + err.message + ")\n\nPuedes rellenar los campos a mano.");
+    return null;
+  }
+}
+
 function allRecipes() { return recipesStore; }
 function findRecipeByName(name) {
   if (!name) return null;
@@ -1079,6 +1108,8 @@ document.getElementById("addRecipeBtn").onclick = () => {
   editingRecipeId = null;
   newMealSel = new Set(); newCatSel = new Set();
   document.getElementById("recipeModalTitle").textContent = "Añadir receta";
+  document.getElementById("importUrlField").style.display = "";
+  document.getElementById("importUrlInput").value = "";
   document.getElementById("newName").value = "";
   document.getElementById("newShort").value = "";
   document.getElementById("newDesc").value = "";
@@ -1095,6 +1126,7 @@ function openEditRecipeModal(id) {
   newMealSel = new Set(r.meals || []);
   newCatSel = new Set(r.cats || []);
   document.getElementById("recipeModalTitle").textContent = "Editar receta";
+  document.getElementById("importUrlField").style.display = "none";
   document.getElementById("newName").value = r.name || "";
   document.getElementById("newShort").value = r.short || "";
   document.getElementById("newDesc").value = r.desc || "";
@@ -1104,6 +1136,23 @@ function openEditRecipeModal(id) {
   renderModalChips();
   document.getElementById("modalBackdrop").classList.add("show");
 }
+document.getElementById("importUrlBtn").onclick = async () => {
+  const url = document.getElementById("importUrlInput").value.trim();
+  if (!url) { alert("Pega primero la URL de la receta."); return; }
+  const btn = document.getElementById("importUrlBtn");
+  btn.disabled = true;
+  const originalLabel = btn.textContent;
+  btn.textContent = "Importando…";
+  const recipe = await importRecipeFromUrl(url);
+  btn.disabled = false;
+  btn.textContent = originalLabel;
+  if (!recipe) return;
+  document.getElementById("newName").value = recipe.name || "";
+  document.getElementById("newDesc").value = recipe.desc || "";
+  document.getElementById("newIngredients").value = (recipe.ingredients || []).join(", ");
+  document.getElementById("newUrl").value = recipe.url || url;
+  alert("Receta importada. Revisa los campos (sobre todo tipo de comida, categoría y alérgenos) antes de guardarla.");
+};
 document.getElementById("cancelModal").onclick = () => document.getElementById("modalBackdrop").classList.remove("show");
 document.getElementById("saveRecipe").onclick = async () => {
   const name = document.getElementById("newName").value.trim();
