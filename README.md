@@ -30,6 +30,15 @@ index.html  ──fetch/POST──>  Google Apps Script (Web App)  ──lee/esc
     con Instagram/redes sociales, ni con artículos sin ese marcado (p. ej.
     El Comidista), que no llevan datos estructurados — en esos casos hay
     que rellenar a mano o pedirle a Claude que lea el artículo y las añada.
+  - `importMenuImage`: botón "✨ Extraer menú con IA" del modal "Subir /
+    crear nuevo menú mensual". Envía la foto o PDF del menú del cole a la
+    API de Gemini (Google), que devuelve día a día la comida de los niños
+    (primero, segundo, guarnición, postre) y los festivos marcados en el
+    documento; solo se actualizan esos campos, conservando desayuno, cena y
+    comida de adultos si ya había algo guardado ese día. Requiere una
+    variable `GEMINI_API_KEY` en las propiedades del script (ver más abajo)
+    — gratis, sin coste real para este uso. Opcionalmente se puede fijar
+    `GEMINI_MODEL` (por defecto `gemini-2.5-flash`).
 - **Pestañas de la Sheet**: `Recetas`, `MenuDias`, `Congelados`,
   `CompraTiendas`, `CompraManual`, `CompraOculta`. Se pueden editar también
   a mano directamente en la hoja — la app las vuelve a leer en cada recarga.
@@ -52,6 +61,16 @@ hay que pegarlo en el editor de verdad y publicar una nueva versión:
 3. Guarda. Implementar → Gestionar implementaciones → editar (lápiz) →
    **Nueva versión** → Implementar (no "nueva implementación", o la URL
    cambiaría y habría que actualizar `SHEET_API_URL` en `index.html`).
+
+**Solo la primera vez**, para que funcione "✨ Extraer menú con IA":
+
+1. Consigue una API key gratuita de Gemini en
+   [aistudio.google.com/apikey](https://aistudio.google.com/apikey) (con tu
+   cuenta de Google; no hace falta tarjeta).
+2. En el editor de Apps Script: icono de engranaje ⚙️ "Configuración del
+   proyecto" → sección "Propiedades del script" → "Añadir propiedad de
+   script".
+3. Añade una propiedad `GEMINI_API_KEY` con el valor de tu clave. Guarda.
 
 ### 2. Frontend (GitHub Pages) — ya hecho
 

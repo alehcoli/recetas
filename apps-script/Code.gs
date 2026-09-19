@@ -212,6 +212,7 @@ function doPost(e) {
       case "shopHidden": return handleShopHidden_(payload);
       case "migrate": return handleMigrate_(payload);
       case "importUrl": return handleImportUrl_(payload);
+      case "importMenuImage": return handleImportMenuImage_(payload);
       default: return jsonOut_({ ok: false, error: "Recurso desconocido: " + resource });
     }
   } catch (err) {
@@ -441,4 +442,150 @@ function instructionsToText_(instructions) {
 function plainText_(v) {
   if (!v) return "";
   return String(v).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Importar menú del cole desde una foto o PDF — botón "✨ Extraer menú con IA"
+ * del modal "Subir / crear nuevo menú mensual". Envía el archivo a la API de
+ * Gemini (Google) pidiéndole que devuelva, día a día, la comida de los niños
+ * (primero/segundo/guarnición/postre) y los festivos marcados en el
+ * documento. Solo toca esos campos: si el día ya tenía desayuno, cena o
+ * comida de adultos guardados, se conservan tal cual.
+ *
+ * Requiere una API key gratuita de Google AI Studio (https://aistudio.google.com/apikey)
+ * guardada como propiedad del script: Apps Script → ⚙️ Configuración del
+ * proyecto → Propiedades del script → añade GEMINI_API_KEY con tu clave.
+ * Opcionalmente se puede fijar también GEMINI_MODEL (por defecto "gemini-2.5-flash").
+ */
+function handleImportMenuImage_(payload) {
+  const action = payload.action;
+  if (action !== "extract") return jsonOut_({ ok: false, error: "Acción desconocida: " + action });
+
+  const monthKey = payload.monthKey;
+  const year = Number(payload.year);
+  const month = Number(payload.month); // 0-indexado
+  const imageBase64 = payload.image;
+  const mimeType = payload.mimeType || "image/jpeg";
+  if (!monthKey || !imageBase64) return jsonOut_({ ok: false, error: "Faltan datos (mes o archivo)." });
+
+  const props = PropertiesService.getScriptProperties();
+  const apiKey = props.getProperty("GEMINI_API_KEY");
+  if (!apiKey) {
+    return jsonOut_({ ok: false, error: "No hay ninguna clave de Gemini configurada en el servidor. Ve a Apps Script → Configuración del proyecto → Propiedades del script y añade GEMINI_API_KEY (gratis en aistudio.google.com/apikey)." });
+  }
+  const model = props.getProperty("GEMINI_MODEL") || "gemini-2.5-flash";
+
+  const monthNames = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+  const monthName = monthNames[month] || "";
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const prompt = "Esta imagen o documento es el menú escolar mensual de un colegio en España, para " + monthName + " de " + year +
+    ". Extrae ÚNICAMENTE el menú de la COMIDA (almuerzo) de los niños, día a día del mes (el mes tiene " + daysInMonth + " días). " +
+    "Para cada día del mes que aparezca en el documento con menú, devuelve un objeto con: " +
+    "\"day\" (número del día, entero entre 1 y " + daysInMonth + "), \"holiday\" (true si ese día es festivo o no hay cole, false en caso contrario), " +
+    "\"holidayName\" (nombre del festivo si el documento lo indica, si no cadena vacía), " +
+    "\"primero\" (primer plato), \"segundo\" (segundo plato), \"guarnicion\" (guarnición del segundo, cadena vacía si no aplica), " +
+    "\"postre\" (postre o fruta, cadena vacía si no aplica). " +
+    "Si un día no aparece en el documento (por ejemplo fines de semana) NO lo incluyas en el resultado. " +
+    "Responde EXCLUSIVAMENTE con el array JSON de esos objetos, sin ningún texto adicional.";
+
+  const requestBody = {
+    contents: [{
+      role: "user",
+      parts: [
+        { inlineData: { mimeType: mimeType, data: imageBase64 } },
+        { text: prompt }
+      ]
+    }],
+    generationConfig: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: "ARRAY",
+        items: {
+          type: "OBJECT",
+          properties: {
+            day: { type: "INTEGER" },
+            holiday: { type: "BOOLEAN" },
+            holidayName: { type: "STRING" },
+            primero: { type: "STRING" },
+            segundo: { type: "STRING" },
+            guarnicion: { type: "STRING" },
+            postre: { type: "STRING" }
+          },
+          required: ["day"]
+        }
+      }
+    }
+  };
+
+  const url = "https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent?key=" + encodeURIComponent(apiKey);
+  let res;
+  try {
+    res = UrlFetchApp.fetch(url, {
+      method: "post",
+      contentType: "application/json",
+      payload: JSON.stringify(requestBody),
+      muteHttpExceptions: true
+    });
+  } catch (err) {
+    return jsonOut_({ ok: false, error: "No se ha podido contactar con Gemini: " + err });
+  }
+  const code = res.getResponseCode();
+  if (code >= 400) {
+    return jsonOut_({ ok: false, error: "Gemini devolvió un error (" + code + "): " + res.getContentText().slice(0, 300) });
+  }
+
+  let extracted;
+  try {
+    const data = JSON.parse(res.getContentText());
+    const text = data.candidates[0].content.parts[0].text;
+    extracted = JSON.parse(text);
+  } catch (err) {
+    return jsonOut_({ ok: false, error: "No se ha podido interpretar la respuesta de Gemini: " + err });
+  }
+  if (!Array.isArray(extracted) || !extracted.length) {
+    return jsonOut_({ ok: false, error: "Gemini no ha encontrado ningún día con menú en ese documento." });
+  }
+
+  // Fusiona con los días ya existentes del mes: solo se actualiza la comida
+  // de los niños y el festivo, conservando desayuno/cena/adultos si ya había algo.
+  const cfg = SHEETS.days;
+  const sheet = getOrCreateSheet_("days");
+  const values = sheet.getDataRange().getValues();
+  const headers = values.length ? values[0] : cfg.headers;
+  const mkIdx = headers.indexOf("monthKey"), dIdx = headers.indexOf("day");
+  const existingRows = {};
+  for (let i = 1; i < values.length; i++) {
+    if (String(values[i][mkIdx]) === String(monthKey)) {
+      existingRows[Number(values[i][dIdx])] = rowToObj_(cfg, headers, values[i]);
+    }
+  }
+
+  const resultDays = [];
+  extracted.forEach(item => {
+    const dayNum = Number(item.day);
+    if (!dayNum || dayNum < 1 || dayNum > daysInMonth) return;
+    const base = existingRows[dayNum] || {
+      monthKey: monthKey, day: dayNum, holiday: false, holidayName: "", desayuno: "",
+      ninosPrimero: "", ninosSegundo: "", ninosGuarnicion: "", ninosPostre: "",
+      adultosPrimero: "", adultosSegundo: "", adultosGuarnicion: "", adultosPostre: "", cena: ""
+    };
+    base.monthKey = monthKey;
+    base.day = dayNum;
+    base.holiday = !!item.holiday;
+    base.holidayName = item.holidayName || "";
+    base.ninosPrimero = item.primero || "";
+    base.ninosSegundo = item.segundo || "";
+    base.ninosGuarnicion = item.guarnicion || "";
+    base.ninosPostre = item.postre || "";
+    resultDays.push(base);
+  });
+
+  if (!resultDays.length) {
+    return jsonOut_({ ok: false, error: "Gemini no ha encontrado ningún día válido en ese documento." });
+  }
+
+  resultDays.forEach(day => upsertRow_("days", ["monthKey", "day"], day));
+
+  return jsonOut_({ ok: true, days: resultDays });
 }
