@@ -31,9 +31,17 @@
 const SHEETS = {
   recipes: {
     name: "Recetas",
-    headers: ["id", "name", "short", "meals", "cats", "desc", "ingredients", "allergens", "source", "url", "custom"],
+    // "inMenu" se añadió al final a propósito: cualquier columna nueva debe
+    // ir siempre al final de este array (ver migración de cabeceras en
+    // getOrCreateSheet_), para no desplazar las columnas ya existentes en
+    // hojas reales que la gente ya tiene con datos.
+    headers: ["id", "name", "short", "meals", "cats", "desc", "ingredients", "allergens", "source", "url", "custom", "inMenu"],
     arrayFields: ["meals", "cats", "ingredients", "allergens"],
     boolFields: ["custom"],
+    // Como "boolFields", pero si la celda está vacía (recetas ya existentes
+    // antes de añadir esta columna) se interpreta como true, no false —
+    // para que no desaparezcan del menú aleatorio recetas ya guardadas.
+    boolFieldsDefaultTrue: ["inMenu"],
   },
   days: {
     name: "MenuDias",
@@ -99,6 +107,16 @@ function getOrCreateSheet_(key) {
   if (sheet.getLastRow() === 0) {
     sheet.appendRow(cfg.headers);
     sheet.setFrozenRows(1);
+    return sheet;
+  }
+  // Migración de cabeceras: si el código ha añadido columnas nuevas al
+  // final desde la última vez (p. ej. "inMenu"), se añaden también en la
+  // hoja real sin tocar ni reordenar las columnas que ya había con datos.
+  const lastCol = sheet.getLastColumn();
+  const currentHeaders = lastCol ? sheet.getRange(1, 1, 1, lastCol).getValues()[0] : [];
+  if (cfg.headers.length > currentHeaders.length) {
+    const missing = cfg.headers.slice(currentHeaders.length);
+    sheet.getRange(1, currentHeaders.length + 1, 1, missing.length).setValues([missing]);
   }
   return sheet;
 }
@@ -109,6 +127,8 @@ function rowToObj_(cfg, headers, row) {
     let v = row[i];
     if (cfg.arrayFields.indexOf(h) !== -1) {
       try { v = v ? JSON.parse(v) : []; } catch (e) { v = []; }
+    } else if ((cfg.boolFieldsDefaultTrue || []).indexOf(h) !== -1) {
+      v = !(v === false || v === "false" || v === "FALSE");
     } else if (cfg.boolFields.indexOf(h) !== -1) {
       v = (v === true || v === "true" || v === "TRUE");
     } else if (v === undefined || v === null) {
@@ -122,7 +142,7 @@ function rowToObj_(cfg, headers, row) {
 function objToRow_(cfg, obj) {
   return cfg.headers.map(h => {
     if (cfg.arrayFields.indexOf(h) !== -1) return JSON.stringify(obj[h] || []);
-    if (cfg.boolFields.indexOf(h) !== -1) return !!obj[h];
+    if (cfg.boolFields.indexOf(h) !== -1 || (cfg.boolFieldsDefaultTrue || []).indexOf(h) !== -1) return !!obj[h];
     return (obj[h] !== undefined && obj[h] !== null) ? obj[h] : "";
   });
 }
@@ -455,7 +475,7 @@ function plainText_(v) {
  * Requiere una API key gratuita de Google AI Studio (https://aistudio.google.com/apikey)
  * guardada como propiedad del script: Apps Script → ⚙️ Configuración del
  * proyecto → Propiedades del script → añade GEMINI_API_KEY con tu clave.
- * Opcionalmente se puede fijar también GEMINI_MODEL (por defecto "gemini-2.5-flash").
+ * Opcionalmente se puede fijar también GEMINI_MODEL (por defecto "gemini-3.6-flash").
  */
 function handleImportMenuImage_(payload) {
   const action = payload.action;
@@ -473,7 +493,7 @@ function handleImportMenuImage_(payload) {
   if (!apiKey) {
     return jsonOut_({ ok: false, error: "No hay ninguna clave de Gemini configurada en el servidor. Ve a Apps Script → Configuración del proyecto → Propiedades del script y añade GEMINI_API_KEY (gratis en aistudio.google.com/apikey)." });
   }
-  const model = props.getProperty("GEMINI_MODEL") || "gemini-2.5-flash";
+  const model = props.getProperty("GEMINI_MODEL") || "gemini-3.6-flash";
 
   const monthNames = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
   const monthName = monthNames[month] || "";

@@ -105,6 +105,17 @@
   .recipe-card .recipe-link a:hover { text-decoration: underline; }
   .recipe-card .source { font-size: 11px; color: #9aa79f; margin-top: auto; padding-top: 4px; border-top: 1px dashed var(--border); }
   .recipe-card.custom { border-color: var(--orange); }
+  .recipe-card:not(.menu-excluded) { background: var(--green-lighter); border-color: var(--green-dark); }
+  .recipe-card.menu-excluded { border-color: #ccc; }
+  .recipe-card.menu-excluded > *:not(.menu-toggle) { filter: grayscale(1); opacity: .65; }
+  .menu-toggle {
+    align-self: flex-start; font-family: inherit;
+    font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+    border: 1px solid var(--border); background: #fff; color: var(--text-soft);
+    cursor: pointer; user-select: none; transition: all .15s;
+  }
+  .menu-toggle:hover { border-color: var(--green); }
+  .menu-toggle.is-on { background: var(--green-light); border-color: var(--green); color: var(--green-dark); }
   .recipe-card .card-actions { display: flex; gap: 14px; justify-content: flex-end; margin-top: 2px; padding-top: 6px; border-top: 1px dashed var(--border); }
   .recipe-card .del { background: none; border: none; color: var(--text-soft); font-size: 11.5px; cursor: pointer; padding: 0; font-weight: 600; }
   .recipe-card .del:hover { color: var(--green-dark); }
@@ -1038,13 +1049,15 @@ function renderRecipes() {
   document.getElementById("countLine").textContent = list.length + " receta" + (list.length===1?"":"s") + " encontrada" + (list.length===1?"":"s");
 
   list.forEach((r) => {
+    const inMenu = r.inMenu !== false;
     const card = document.createElement("div");
-    card.className = "recipe-card" + (r.custom ? " custom" : "");
+    card.className = "recipe-card" + (r.custom ? " custom" : "") + (inMenu ? "" : " menu-excluded");
     const mealTags = r.meals.map(m => `<span class="tag meal">${m}</span>`).join("");
     const catTags = r.cats.map(c => `<span class="tag cat">${c}</span>`).join("");
     const originTag = `<span class="tag origin" title="${escapeHtml(r.source||originOf(r))}">${escapeHtml(originOf(r))}</span>`;
     card.innerHTML = `
       <h3>${escapeHtml(r.name)}</h3>
+      <button type="button" class="menu-toggle${inMenu ? " is-on" : ""}" title="Si la excluyes, esta receta no se propondrá al generar el menú aleatorio (sí puedes seguir escribiéndola a mano en un día)">En el menú aleatorio</button>
       <div class="tag-row">${mealTags}${catTags}${originTag}</div>
       <div class="desc">${escapeHtml(r.desc||"")}</div>
       ${r.ingredients && r.ingredients.length ? `<div class="ingredients"><b>Ingredientes:</b> ${r.ingredients.join(", ")}</div>` : ""}
@@ -1052,6 +1065,17 @@ function renderRecipes() {
       ${r.url ? `<div class="recipe-link"><a href="${escapeHtml(r.url)}" target="_blank" rel="noopener noreferrer">🔗 Ver receta original</a></div>` : ""}
       <div class="card-actions"></div>
     `;
+    const menuToggle = card.querySelector(".menu-toggle");
+    menuToggle.onclick = async () => {
+      const newValue = !(r.inMenu !== false);
+      menuToggle.disabled = true;
+      const ok = await updateRecipeRemote(Object.assign({}, r, { inMenu: newValue }));
+      menuToggle.disabled = false;
+      if (!ok) return; // el error ya se ha avisado dentro de postToSheet()
+      r.inMenu = newValue;
+      card.classList.toggle("menu-excluded", !newValue);
+      menuToggle.classList.toggle("is-on", newValue);
+    };
     const actions = card.querySelector(".card-actions");
     const editBtn = document.createElement("button");
     editBtn.className = "del";
@@ -1208,7 +1232,8 @@ document.getElementById("saveRecipe").onclick = async () => {
     const created = {
       name, short, desc, ingredients, allergens, url, meals, cats,
       source: "Añadida por ti",
-      custom: true
+      custom: true,
+      inMenu: true
     };
     ok = await createRecipeRemote(created);
   }
@@ -1623,8 +1648,11 @@ function proteinCategoryOf(name) {
   if (r.cats.includes("Legumbre")) return "legumbre";
   return null;
 }
+function menuEligibleRecipes() {
+  return allRecipes().filter(r => r.inMenu !== false);
+}
 function buildMenuPools() {
-  const comida = allRecipes().filter(r => r.meals.includes("Comida"));
+  const comida = menuEligibleRecipes().filter(r => r.meals.includes("Comida"));
   const primero = comida.filter(r =>
     /^(Crema|Sopa|Puré|Pisto|Menestra|Arroz|Macarrones|Alubias|Lentejas|Cazuelita|Paella|Patatas)/i.test(r.name) ||
     r.cats.includes("Cereal") || r.cats.includes("Legumbre")
@@ -1676,7 +1704,7 @@ function generateRandomMonth(monthKey) {
     let changed = false;
 
     if (!day.desayuno) {
-      const options = allRecipes().filter(r => r.meals.includes("Desayuno"));
+      const options = menuEligibleRecipes().filter(r => r.meals.includes("Desayuno"));
       const pick = pickRandomRecipe(options, recentDesayunos.slice(-2));
       if (pick) { day.desayuno = pick.name; recentDesayunos.push(pick.name); changed = true; }
     }
@@ -1716,7 +1744,7 @@ function generateRandomMonth(monthKey) {
     if (!day.cena) {
       const lunchMain = day.comidaNinos.segundo || day.comidaAdultos.segundo || day.comidaNinos.primero || day.comidaAdultos.primero;
       const lunchProtein = proteinCategoryOf(lunchMain);
-      const cenaRecipes = allRecipes().filter(r => r.meals.includes("Cena"));
+      const cenaRecipes = menuEligibleRecipes().filter(r => r.meals.includes("Cena"));
       let filtered;
       if (lunchProtein === "pescado") filtered = cenaRecipes.filter(r => r.cats.includes("Huevo"));
       else if (lunchProtein === "carne") filtered = cenaRecipes.filter(r => r.cats.includes("Proteína animal (pescado/marisco)"));
