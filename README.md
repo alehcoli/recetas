@@ -38,7 +38,7 @@ index.html  ──fetch/POST──>  Google Apps Script (Web App)  ──lee/esc
     comida de adultos si ya había algo guardado ese día. Requiere una
     variable `GEMINI_API_KEY` en las propiedades del script (ver más abajo)
     — gratis, sin coste real para este uso. Opcionalmente se puede fijar
-    `GEMINI_MODEL` (por defecto `gemini-2.5-flash`).
+    `GEMINI_MODEL` (por defecto `gemini-3.6-flash`).
 - **Pestañas de la Sheet**: `Recetas`, `MenuDias`, `Congelados`,
   `CompraTiendas`, `CompraManual`, `CompraOculta`. Se pueden editar también
   a mano directamente en la hoja — la app las vuelve a leer en cada recarga.

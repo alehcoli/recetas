@@ -455,7 +455,7 @@ function plainText_(v) {
  * Requiere una API key gratuita de Google AI Studio (https://aistudio.google.com/apikey)
  * guardada como propiedad del script: Apps Script → ⚙️ Configuración del
  * proyecto → Propiedades del script → añade GEMINI_API_KEY con tu clave.
- * Opcionalmente se puede fijar también GEMINI_MODEL (por defecto "gemini-2.5-flash").
+ * Opcionalmente se puede fijar también GEMINI_MODEL (por defecto "gemini-3.6-flash").
  */
 function handleImportMenuImage_(payload) {
   const action = payload.action;
@@ -473,7 +473,7 @@ function handleImportMenuImage_(payload) {
   if (!apiKey) {
     return jsonOut_({ ok: false, error: "No hay ninguna clave de Gemini configurada en el servidor. Ve a Apps Script → Configuración del proyecto → Propiedades del script y añade GEMINI_API_KEY (gratis en aistudio.google.com/apikey)." });
   }
-  const model = props.getProperty("GEMINI_MODEL") || "gemini-2.5-flash";
+  const model = props.getProperty("GEMINI_MODEL") || "gemini-3.6-flash";
 
   const monthNames = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
   const monthName = monthNames[month] || "";
