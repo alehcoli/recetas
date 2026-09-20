@@ -31,9 +31,17 @@
 const SHEETS = {
   recipes: {
     name: "Recetas",
-    headers: ["id", "name", "short", "meals", "cats", "desc", "ingredients", "allergens", "source", "url", "custom"],
+    // "inMenu" se añadió al final a propósito: cualquier columna nueva debe
+    // ir siempre al final de este array (ver migración de cabeceras en
+    // getOrCreateSheet_), para no desplazar las columnas ya existentes en
+    // hojas reales que la gente ya tiene con datos.
+    headers: ["id", "name", "short", "meals", "cats", "desc", "ingredients", "allergens", "source", "url", "custom", "inMenu"],
     arrayFields: ["meals", "cats", "ingredients", "allergens"],
     boolFields: ["custom"],
+    // Como "boolFields", pero si la celda está vacía (recetas ya existentes
+    // antes de añadir esta columna) se interpreta como true, no false —
+    // para que no desaparezcan del menú aleatorio recetas ya guardadas.
+    boolFieldsDefaultTrue: ["inMenu"],
   },
   days: {
     name: "MenuDias",
@@ -99,6 +107,16 @@ function getOrCreateSheet_(key) {
   if (sheet.getLastRow() === 0) {
     sheet.appendRow(cfg.headers);
     sheet.setFrozenRows(1);
+    return sheet;
+  }
+  // Migración de cabeceras: si el código ha añadido columnas nuevas al
+  // final desde la última vez (p. ej. "inMenu"), se añaden también en la
+  // hoja real sin tocar ni reordenar las columnas que ya había con datos.
+  const lastCol = sheet.getLastColumn();
+  const currentHeaders = lastCol ? sheet.getRange(1, 1, 1, lastCol).getValues()[0] : [];
+  if (cfg.headers.length > currentHeaders.length) {
+    const missing = cfg.headers.slice(currentHeaders.length);
+    sheet.getRange(1, currentHeaders.length + 1, 1, missing.length).setValues([missing]);
   }
   return sheet;
 }
@@ -109,6 +127,8 @@ function rowToObj_(cfg, headers, row) {
     let v = row[i];
     if (cfg.arrayFields.indexOf(h) !== -1) {
       try { v = v ? JSON.parse(v) : []; } catch (e) { v = []; }
+    } else if ((cfg.boolFieldsDefaultTrue || []).indexOf(h) !== -1) {
+      v = !(v === false || v === "false" || v === "FALSE");
     } else if (cfg.boolFields.indexOf(h) !== -1) {
       v = (v === true || v === "true" || v === "TRUE");
     } else if (v === undefined || v === null) {
@@ -122,7 +142,7 @@ function rowToObj_(cfg, headers, row) {
 function objToRow_(cfg, obj) {
   return cfg.headers.map(h => {
     if (cfg.arrayFields.indexOf(h) !== -1) return JSON.stringify(obj[h] || []);
-    if (cfg.boolFields.indexOf(h) !== -1) return !!obj[h];
+    if (cfg.boolFields.indexOf(h) !== -1 || (cfg.boolFieldsDefaultTrue || []).indexOf(h) !== -1) return !!obj[h];
     return (obj[h] !== undefined && obj[h] !== null) ? obj[h] : "";
   });
 }
