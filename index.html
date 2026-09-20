@@ -486,7 +486,7 @@
 <div class="modal-backdrop" id="newMonthBackdrop">
   <div class="modal">
     <h2>Subir / crear nuevo menú mensual</h2>
-    <div class="modal-sub">Crea el mes en blanco y rellena cada día con el botón "Editar" de la tarjeta, o pégame el PDF/foto del menú del colegio en el chat y te lo relleno yo aquí mismo.</div>
+    <div class="modal-sub">Elige el mes y sube la foto o el PDF del menú del cole para rellenarlo automáticamente con IA, o crea el mes en blanco y rellena cada día a mano con el botón "Editar" de la tarjeta.</div>
     <div class="field-row">
       <div class="field">
         <label>Mes</label>
@@ -497,9 +497,16 @@
         <input type="number" id="newMonthYear" value="2026">
       </div>
     </div>
+    <div class="field">
+      <label>Foto o PDF del menú del cole (opcional)</label>
+      <input type="file" id="menuImageInput" accept="image/*,application/pdf">
+      <div class="modal-sub" style="margin-top:4px;">Solo rellena la comida de los niños (primero, segundo, guarnición, postre) y los festivos que marque el documento — el resto del día se deja tal cual.</div>
+      <div id="menuImageStatus" style="font-size:12.5px; margin-top:4px;"></div>
+    </div>
     <div class="modal-actions">
       <button class="btn secondary" id="cancelNewMonth">Cancelar</button>
-      <button class="btn" id="createNewMonth">Crear mes en blanco</button>
+      <button class="btn secondary" id="createNewMonth">Crear mes en blanco</button>
+      <button class="btn" id="extractMenuBtn">✨ Extraer menú con IA</button>
     </div>
   </div>
 </div>
@@ -1486,9 +1493,73 @@ document.getElementById("newMonthBtn").onclick = () => {
   const now = new Date();
   document.getElementById("newMonthSelect").value = now.getMonth();
   document.getElementById("newMonthYear").value = now.getFullYear();
+  document.getElementById("menuImageInput").value = "";
+  document.getElementById("menuImageStatus").textContent = "";
   document.getElementById("newMonthBackdrop").classList.add("show");
 };
 document.getElementById("cancelNewMonth").onclick = () => document.getElementById("newMonthBackdrop").classList.remove("show");
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
+    reader.onerror = () => reject(new Error("No se ha podido leer el archivo."));
+    reader.readAsDataURL(file);
+  });
+}
+
+document.getElementById("extractMenuBtn").onclick = async () => {
+  const monthIdx = parseInt(document.getElementById("newMonthSelect").value, 10);
+  const year = parseInt(document.getElementById("newMonthYear").value, 10);
+  const fileInput = document.getElementById("menuImageInput");
+  const status = document.getElementById("menuImageStatus");
+  const file = fileInput.files[0];
+  if (!year || year < 2000) { alert("Introduce un año válido."); return; }
+  if (!file) { alert("Selecciona antes una foto o PDF del menú del cole."); return; }
+
+  const key = year + "-" + String(monthIdx + 1).padStart(2, "0");
+  const btn = document.getElementById("extractMenuBtn");
+  btn.disabled = true; btn.textContent = "Leyendo menú…";
+  status.style.color = "var(--text-soft)";
+  status.textContent = "Analizando el documento con IA, puede tardar unos segundos…";
+
+  try {
+    const base64 = await fileToBase64(file);
+    const res = await callSheetApi({
+      resource: "importMenuImage", action: "extract",
+      monthKey: key, year, month: monthIdx,
+      image: base64, mimeType: file.type || "image/jpeg"
+    });
+    if (!res || res.ok !== true) {
+      status.style.color = "#b23";
+      status.textContent = "❌ " + ((res && res.error) || "No se ha podido extraer el menú.");
+      return;
+    }
+    if (!monthsData[key]) monthsData[key] = { year, month: monthIdx, days: {} };
+    res.days.forEach(row => { monthsData[key].days[row.day] = flatToDay(row); });
+    currentMonthKey = key;
+    renderMonthSelect();
+    renderMonth(key);
+    renderKidsMonthSelect();
+    renderKidsMenu(key);
+    renderShoppingMonthSelect();
+    status.style.color = "var(--green-dark)";
+    status.textContent = "✅ Menú de " + res.days.length + " día(s) importado. Revisa el mes y ajusta lo que haga falta.";
+    fileInput.value = "";
+    setTimeout(() => {
+      document.getElementById("newMonthBackdrop").classList.remove("show");
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+      document.querySelector('.tab-btn[data-tab="menu"]').classList.add("active");
+      document.getElementById("panel-menu").classList.add("active");
+    }, 1200);
+  } catch (err) {
+    status.style.color = "#b23";
+    status.textContent = "❌ Error leyendo el archivo: " + err;
+  } finally {
+    btn.disabled = false; btn.textContent = "✨ Extraer menú con IA";
+  }
+};
 document.getElementById("createNewMonth").onclick = async () => {
   const monthIdx = parseInt(document.getElementById("newMonthSelect").value, 10);
   const year = parseInt(document.getElementById("newMonthYear").value, 10);
