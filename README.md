@@ -39,13 +39,14 @@ index.html  ──fetch/POST──>  Google Apps Script (Web App)  ──lee/esc
     variable `GEMINI_API_KEY` en las propiedades del script (ver más abajo)
     — gratis, sin coste real para este uso. Opcionalmente se puede fijar
     `GEMINI_MODEL` (por defecto `gemini-3.6-flash`).
-- Cada receta del **Recetario** tiene un checkbox "En el menú aleatorio"
-  (se marca/desmarca directamente desde la tarjeta, sin entrar a editarla).
-  Si lo desmarcas, esa receta deja de proponerse al pulsar "🎲 Generar menú
-  aleatorio" en Menú mensual — pero sigue apareciendo en el recetario y
-  puedes seguir escribiéndola a mano en cualquier día. Las recetas que no
-  tengan este campo (las que ya tenías antes de este cambio) se consideran
-  incluidas por defecto.
+- Cada receta del **Recetario** tiene un botón 🎲 en la esquina de su
+  tarjeta para incluirla o excluirla del menú aleatorio, sin entrar a
+  editarla. Si la excluyes, toda la tarjeta se pone en blanco y negro y esa
+  receta deja de proponerse al pulsar "🎲 Generar menú aleatorio" en Menú
+  mensual — pero sigue apareciendo en el recetario y puedes seguir
+  escribiéndola a mano en cualquier día. Las recetas que no tengan este
+  campo (las que ya tenías antes de este cambio) se consideran incluidas
+  por defecto.
 - **Pestañas de la Sheet**: `Recetas`, `MenuDias`, `Congelados`,
   `CompraTiendas`, `CompraManual`, `CompraOculta`. Se pueden editar también
   a mano directamente en la hoja — la app las vuelve a leer en cada recarga.
