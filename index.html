@@ -1068,13 +1068,17 @@ function renderRecipes() {
     const menuToggle = card.querySelector(".menu-toggle");
     menuToggle.onclick = async () => {
       const newValue = !(r.inMenu !== false);
-      menuToggle.disabled = true;
-      const ok = await updateRecipeRemote(Object.assign({}, r, { inMenu: newValue }));
-      menuToggle.disabled = false;
-      if (!ok) return; // el error ya se ha avisado dentro de postToSheet()
+      // Actualización optimista: cambia el color al instante y guarda en
+      // segundo plano; si el guardado falla, se revierte visualmente.
       r.inMenu = newValue;
       card.classList.toggle("menu-excluded", !newValue);
       menuToggle.classList.toggle("is-on", newValue);
+      const ok = await updateRecipeRemote(Object.assign({}, r, { inMenu: newValue }));
+      if (!ok) { // el error ya se ha avisado dentro de postToSheet()
+        r.inMenu = !newValue;
+        card.classList.toggle("menu-excluded", newValue);
+        menuToggle.classList.toggle("is-on", !newValue);
+      }
     };
     const actions = card.querySelector(".card-actions");
     const editBtn = document.createElement("button");
