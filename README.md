@@ -47,6 +47,21 @@ index.html  ──fetch/POST──>  Google Apps Script (Web App)  ──lee/esc
   escribiéndola a mano en cualquier día. Las recetas que no tengan este
   campo (las que ya tenías antes de este cambio) se consideran incluidas
   por defecto.
+- Cada receta tiene también un campo **Público** (niños / adultos / ambos),
+  editable desde el mismo modal de añadir/editar receta. Las recetas sin
+  este campo (las que ya tenías) se consideran válidas para ambos.
+- El día del **Menú mensual** se divide en Desayuno, Comida (niños/adultos),
+  Merienda y Cena (niños/adultos) — la Cena ahora también se planifica por
+  separado para cada uno, igual que la Comida.
+- **Menú mensual** muestra siempre semanas completas (Lunes-Domingo), no
+  solo el mes natural: si la última semana de un mes cae en el mes
+  siguiente (o la primera en el anterior), esos días también se ven y se
+  pueden editar — se guardan en el mes al que realmente pertenecen. Esos
+  días no se rellenan nunca automáticamente con el menú de los niños,
+  porque ese dato es siempre específico de cada mes.
+- **Menú mensual** y **Menú niños** se abren por defecto en el último mes
+  que tenga cargado el menú del cole (no en el mes más antiguo guardado en
+  la Sheet).
 - **Pestañas de la Sheet**: `Recetas`, `MenuDias`, `Congelados`,
   `CompraTiendas`, `CompraManual`, `CompraOculta`. Se pueden editar también
   a mano directamente en la hoja — la app las vuelve a leer en cada recarga.
