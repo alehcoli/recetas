@@ -16,6 +16,8 @@
     --orange-light: #fdf1e3;
     --blue: #3d7ea6;
     --blue-light: #e7f2f7;
+    --purple: #7d5ba6;
+    --purple-light: #efe8f7;
     --text: #263229;
     --text-soft: #5c6b60;
     --border: #dbe8de;
@@ -83,6 +85,7 @@
   .chip.active { background: var(--green); border-color: var(--green); color: #fff; }
   .chip.active.cat { background: var(--orange); border-color: var(--orange); }
   .chip.active.origin { background: var(--blue); border-color: var(--blue); }
+  .chip.active.audience { background: var(--purple); border-color: var(--purple); }
   .count-line { font-size: 13px; color: var(--text-soft); margin: 4px 0 2px; }
 
   .recipe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
@@ -96,6 +99,7 @@
   .tag.meal { background: var(--green-light); color: var(--green-dark); }
   .tag.cat { background: var(--orange-light); color: #a8601a; }
   .tag.origin { background: var(--blue-light); color: var(--blue); }
+  .tag.audience { background: var(--purple-light); color: var(--purple); }
   .recipe-card .desc { font-size: 13px; color: var(--text-soft); }
   .recipe-card .ingredients { font-size: 12px; color: var(--text-soft); }
   .recipe-card .ingredients b { color: var(--text); }
@@ -167,6 +171,7 @@
   .day-cats { font-size: 11.5px; color: var(--text-soft); margin-top: 8px; padding-top: 7px; border-top: 1px dashed var(--border); }
   .day-cats .tag { font-size: 10.5px; padding: 2px 7px; margin: 3px 4px 0 0; display: inline-block; }
   .day-card.out { background: transparent; border: none; min-height: 0; }
+  .day-card.adjacent-month { border-style: dashed; opacity: .85; }
   .day-card.blank-day { display: flex; align-items: center; justify-content: center; min-height: 90px; }
   .day-card.blank-day .add-link { border: none; background: none; color: var(--green); font-size: 12px; cursor: pointer; font-weight: 600; }
   .day-card.blank-day .add-link:hover { text-decoration: underline; }
@@ -398,6 +403,10 @@
       <div class="chip-row" id="newCatChips"></div>
     </div>
     <div class="field">
+      <label>Público (elige uno o ambos)</label>
+      <div class="chip-row" id="newAudienceChips"></div>
+    </div>
+    <div class="field">
       <label>Descripción / preparación</label>
       <textarea id="newDesc" placeholder="Breve preparación"></textarea>
     </div>
@@ -480,8 +489,18 @@
       </div>
     </div>
     <div class="field" style="margin-top:14px;">
-      <label>Cena (familia)</label>
-      <input type="text" id="dayCena" list="recipeNamesList">
+      <label>Merienda (familia)</label>
+      <input type="text" id="dayMerienda" list="recipeNamesList">
+    </div>
+    <div class="modal-sub" style="margin:14px 0 6px; font-weight:700; color:var(--green-dark);">🌙 Cena — Niños</div>
+    <div class="field">
+      <label>Plato</label>
+      <input type="text" id="dayCenaNinos" list="recipeNamesList">
+    </div>
+    <div class="modal-sub" style="margin:8px 0 6px; font-weight:700; color:var(--blue);">🌙 Cena — Adultos</div>
+    <div class="field">
+      <label>Plato</label>
+      <input type="text" id="dayCenaAdultos" list="recipeNamesList">
     </div>
     <datalist id="recipeNamesList"></datalist>
     <div class="modal-actions">
@@ -553,6 +572,7 @@
 --------------------------------------------------------------- */
 const MEAL_TYPES = ["Desayuno", "Comida", "Merienda", "Cena"];
 const CATEGORIES = ["Verdura", "Fruta", "Legumbre", "Cereal", "Proteína animal (carne)", "Proteína animal (pescado/marisco)", "Huevo", "Lácteo"];
+const AUDIENCES = ["Niños", "Adultos"];
 // Deduce una categoría de origen corta a partir del campo "source" de la receta.
 // Si el origen incluye una cuenta (p. ej. "Instagram · @realfooding"), se usa esa
 // cuenta como origen (@realfooding), para poder filtrar por la cuenta concreta.
@@ -662,7 +682,8 @@ function d(desayuno, primero, segundo, guarnicion, postre, cena) {
     desayuno,
     comidaNinos: {primero: primero||"", segundo: segundo||"", guarnicion: guarnicion||"", postre: postre||""},
     comidaAdultos: {primero:"", segundo:"", guarnicion:"", postre:""},
-    cena
+    merienda: "",
+    cena: {ninos: cena||"", adultos: cena||""}
   };
 }
 const SEED_MONTHS = {
@@ -745,6 +766,7 @@ let currentMonthKey = null; // se fija en applyLoadedData(), una vez cargados lo
 function dayToFlat(monthKey, dayNum, day) {
   const kids = day.comidaNinos || {};
   const adults = day.comidaAdultos || {};
+  const cena = day.cena || {};
   return {
     monthKey, day: Number(dayNum),
     holiday: !!day.holiday, holidayName: day.holidayName || "", desayuno: day.desayuno || "",
@@ -752,15 +774,21 @@ function dayToFlat(monthKey, dayNum, day) {
     ninosGuarnicion: kids.guarnicion || "", ninosPostre: kids.postre || "",
     adultosPrimero: adults.primero || "", adultosSegundo: adults.segundo || "",
     adultosGuarnicion: adults.guarnicion || "", adultosPostre: adults.postre || "",
-    cena: day.cena || "",
+    merienda: day.merienda || "",
+    cenaNinos: cena.ninos || "", cenaAdultos: cena.adultos || "",
+    // "cena" se mantiene como espejo legible en la Sheet (para quien la mire
+    // a mano) y como referencia histórica; la app ya no la lee, usa cenaNinos/cenaAdultos.
+    cena: cena.adultos || cena.ninos || "",
   };
 }
 function flatToDay(row) {
+  const legacyCena = row.cena || ""; // días guardados antes de separar cena en niños/adultos
   return {
     holiday: !!row.holiday, holidayName: row.holidayName || "", desayuno: row.desayuno || "",
     comidaNinos: { primero: row.ninosPrimero || "", segundo: row.ninosSegundo || "", guarnicion: row.ninosGuarnicion || "", postre: row.ninosPostre || "" },
     comidaAdultos: { primero: row.adultosPrimero || "", segundo: row.adultosSegundo || "", guarnicion: row.adultosGuarnicion || "", postre: row.adultosPostre || "" },
-    cena: row.cena || "",
+    merienda: row.merienda || "",
+    cena: { ninos: row.cenaNinos || legacyCena, adultos: row.cenaAdultos || legacyCena },
   };
 }
 
@@ -794,7 +822,25 @@ function applyLoadedData(data) {
     (shopHidden[row.weekKey] = shopHidden[row.weekKey] || []).push(row.ingrediente);
   });
 
-  currentMonthKey = Object.keys(monthsData).sort()[0];
+  currentMonthKey = latestMonthWithKidsData();
+}
+
+// Elige por defecto el mes más reciente que ya tenga menú de los niños
+// (cole) cargado, en vez de simplemente el primero alfabéticamente — así
+// "Menú mensual" y "Menú niños" abren directamente en el mes actual de
+// verdad, no en el más antiguo guardado (p. ej. abril, si sigue en la Sheet).
+function latestMonthWithKidsData() {
+  const keys = Object.keys(monthsData).sort();
+  if (!keys.length) return null;
+  for (let i = keys.length - 1; i >= 0; i--) {
+    const days = monthsData[keys[i]].days;
+    const hasKidsData = Object.values(days).some(d => {
+      const k = d.comidaNinos || {};
+      return k.primero || k.segundo || k.guarnicion || k.postre;
+    });
+    if (hasKidsData) return keys[i];
+  }
+  return keys[keys.length - 1];
 }
 
 /** Carga recetas, menú, compra y congelados desde la Google Sheet. Devuelve true si tuvo éxito. */
@@ -953,28 +999,51 @@ let activeCatFilters = new Set();
 let activeOriginFilters = new Set();
 let searchTerm = "";
 
-function defaultDay() { return {holiday:false, holidayName:"", desayuno:"", comidaNinos:{primero:"",segundo:"",guarnicion:"",postre:""}, comidaAdultos:{primero:"",segundo:"",guarnicion:"",postre:""}, cena:""}; }
+function defaultDay() { return {holiday:false, holidayName:"", desayuno:"", comidaNinos:{primero:"",segundo:"",guarnicion:"",postre:""}, comidaAdultos:{primero:"",segundo:"",guarnicion:"",postre:""}, merienda:"", cena:{ninos:"",adultos:""}}; }
 function getDay(monthKey, day) {
   const m = monthsData[monthKey];
   if (!m) return defaultDay();
   return m.days[day] || defaultDay();
 }
+function monthKeyOf(year, month) { return year + "-" + String(month + 1).padStart(2, "0"); }
 function setDay(monthKey, day, data) {
+  if (!monthsData[monthKey]) {
+    const [y, mo] = monthKey.split("-").map(Number);
+    monthsData[monthKey] = { year: y, month: mo - 1, days: {} };
+  }
   monthsData[monthKey].days[day] = data;
 }
 function monthLabel(key) {
   const m = monthsData[key];
-  return MONTH_NAMES[m.month] + " " + m.year;
+  if (m) return MONTH_NAMES[m.month] + " " + m.year;
+  const [y, mo] = key.split("-").map(Number);
+  return MONTH_NAMES[mo - 1] + " " + y;
 }
 function daysInMonth(year, month) { return new Date(year, month+1, 0).getDate(); }
 function firstWeekdayMon0(year, month) { const dow = new Date(year, month, 1).getDay(); return (dow + 6) % 7; }
+/* Genera semanas completas (Lun-Dom): las celdas de fuera del mes natural
+   (para completar la primera/última semana) llevan el año/mes/día real del
+   mes adyacente al que pertenecen (mk = su monthKey), no solo un hueco en
+   blanco — así se pueden mostrar y editar como cualquier otro día. */
 function buildMonthGrid(year, month) {
   const total = daysInMonth(year, month);
   const first = firstWeekdayMon0(year, month);
   const cells = [];
-  for (let i=0;i<first;i++) cells.push({day:null, inMonth:false});
-  for (let dnum=1; dnum<=total; dnum++) cells.push({day:dnum, inMonth:true, dow: DOW_NAMES[(first + dnum - 1) % 7]});
-  while (cells.length % 7 !== 0) cells.push({day:null, inMonth:false});
+  const prevMonth = month === 0 ? 11 : month - 1;
+  const prevYear = month === 0 ? year - 1 : year;
+  const prevTotal = daysInMonth(prevYear, prevMonth);
+  for (let i=0;i<first;i++) {
+    const d = prevTotal - first + i + 1;
+    cells.push({day:d, inMonth:false, year:prevYear, month:prevMonth, mk: monthKeyOf(prevYear, prevMonth), dow: DOW_NAMES[i]});
+  }
+  for (let dnum=1; dnum<=total; dnum++) cells.push({day:dnum, inMonth:true, year, month, mk: monthKeyOf(year, month), dow: DOW_NAMES[(first + dnum - 1) % 7]});
+  const nextMonth = month === 11 ? 0 : month + 1;
+  const nextYear = month === 11 ? year + 1 : year;
+  let nextDay = 1;
+  while (cells.length % 7 !== 0) {
+    cells.push({day:nextDay, inMonth:false, year:nextYear, month:nextMonth, mk: monthKeyOf(nextYear, nextMonth), dow: DOW_NAMES[cells.length % 7]});
+    nextDay++;
+  }
   const weeks = [];
   for (let i=0;i<cells.length;i+=7) weeks.push(cells.slice(i,i+7));
   return weeks;
@@ -1055,10 +1124,12 @@ function renderRecipes() {
     const mealTags = r.meals.map(m => `<span class="tag meal">${m}</span>`).join("");
     const catTags = r.cats.map(c => `<span class="tag cat">${c}</span>`).join("");
     const originTag = `<span class="tag origin" title="${escapeHtml(r.source||originOf(r))}">${escapeHtml(originOf(r))}</span>`;
+    const aud = recipeAudiences(r);
+    const audienceTag = aud.length === 1 ? `<span class="tag audience">${aud[0] === "Niños" ? "Solo niños" : "Solo adultos"}</span>` : "";
     card.innerHTML = `
       <h3>${escapeHtml(r.name)}</h3>
       <button type="button" class="menu-toggle${inMenu ? " is-on" : ""}" title="Si la excluyes, esta receta no se propondrá al generar el menú aleatorio (sí puedes seguir escribiéndola a mano en un día)">En el menú aleatorio</button>
-      <div class="tag-row">${mealTags}${catTags}${originTag}</div>
+      <div class="tag-row">${mealTags}${catTags}${originTag}${audienceTag}</div>
       <div class="desc">${escapeHtml(r.desc||"")}</div>
       ${r.ingredients && r.ingredients.length ? `<div class="ingredients"><b>Ingredientes:</b> ${r.ingredients.join(", ")}</div>` : ""}
       ${r.allergens && r.allergens.length ? `<div class="allergens">⚠️ Alérgenos: ${r.allergens.join(", ")}</div>` : ""}
@@ -1108,6 +1179,7 @@ function escapeHtml(s) { const div = document.createElement("div"); div.textCont
 /* Modal añadir receta */
 let newMealSel = new Set();
 let newCatSel = new Set();
+let newAudienceSel = new Set();
 function renderModalChips() {
   const mealBox = document.getElementById("newMealChips");
   mealBox.innerHTML = "";
@@ -1127,11 +1199,21 @@ function renderModalChips() {
     chip.onclick = () => { toggleSet(newCatSel, c); renderModalChips(); };
     catBox.appendChild(chip);
   });
+  const audienceBox = document.getElementById("newAudienceChips");
+  audienceBox.innerHTML = "";
+  AUDIENCES.forEach(a => {
+    const chip = document.createElement("div");
+    chip.className = "chip" + (newAudienceSel.has(a) ? " active audience" : "");
+    chip.textContent = a;
+    chip.onclick = () => { toggleSet(newAudienceSel, a); renderModalChips(); };
+    audienceBox.appendChild(chip);
+  });
 }
+function recipeAudiences(r) { return (r.audience && r.audience.length) ? r.audience : AUDIENCES.slice(); }
 let editingRecipeId = null; // null = modo "añadir"; si no, id de la receta que se está editando
 document.getElementById("addRecipeBtn").onclick = () => {
   editingRecipeId = null;
-  newMealSel = new Set(); newCatSel = new Set();
+  newMealSel = new Set(); newCatSel = new Set(); newAudienceSel = new Set(AUDIENCES);
   document.getElementById("recipeModalTitle").textContent = "Añadir receta";
   document.getElementById("newName").value = "";
   document.getElementById("newShort").value = "";
@@ -1151,6 +1233,7 @@ function openEditRecipeModal(id) {
   editingRecipeId = id;
   newMealSel = new Set(r.meals || []);
   newCatSel = new Set(r.cats || []);
+  newAudienceSel = new Set(recipeAudiences(r));
   document.getElementById("importUrlField").style.display = "none";
   document.getElementById("recipeModalTitle").textContent = "Editar receta";
   document.getElementById("newName").value = r.name || "";
@@ -1221,6 +1304,7 @@ document.getElementById("saveRecipe").onclick = async () => {
   const url = document.getElementById("newUrl").value.trim();
   const meals = Array.from(newMealSel);
   const cats = Array.from(newCatSel);
+  const audience = Array.from(newAudienceSel);
 
   const saveBtn = document.getElementById("saveRecipe");
   saveBtn.disabled = true;
@@ -1230,11 +1314,11 @@ document.getElementById("saveRecipe").onclick = async () => {
   let ok;
   if (editingRecipeId) {
     const r = recipesStore.find(x => x.id === editingRecipeId);
-    const updated = Object.assign({}, r, {name, short, desc, ingredients, allergens, url, meals, cats});
+    const updated = Object.assign({}, r, {name, short, desc, ingredients, allergens, url, meals, cats, audience});
     ok = await updateRecipeRemote(updated);
   } else {
     const created = {
-      name, short, desc, ingredients, allergens, url, meals, cats,
+      name, short, desc, ingredients, allergens, url, meals, cats, audience,
       source: "Añadida por ti",
       custom: true,
       inMenu: true
@@ -1300,7 +1384,7 @@ function condensedMealLine(obj) {
 
 function dayCategorySummary(dayData) {
   const cats = new Set();
-  const texts = [dayData.desayuno, dayData.cena]
+  const texts = [dayData.desayuno, dayData.merienda, dayData.cena.ninos, dayData.cena.adultos]
     .concat(mealItems(dayData.comidaNinos))
     .concat(mealItems(dayData.comidaAdultos));
   texts.forEach(txt => {
@@ -1323,43 +1407,41 @@ function renderMonth(monthKey) {
     grid.className = "week-grid";
     week.forEach(cell => {
       const card = document.createElement("div");
-      if (!cell.inMonth) {
-        card.className = "day-card out";
-        grid.appendChild(card);
-        return;
-      }
-      const dayData = getDay(monthKey, cell.day);
+      const adjacentClass = cell.inMonth ? "" : " adjacent-month";
+      const dayData = getDay(cell.mk, cell.day);
       const kidsItems = mealItems(dayData.comidaNinos);
       const adultItems = mealItems(dayData.comidaAdultos);
-      const hasContent = dayData.desayuno || kidsItems.length || adultItems.length || dayData.cena || dayData.holiday;
+      const hasContent = dayData.desayuno || dayData.merienda || kidsItems.length || adultItems.length || dayData.cena.ninos || dayData.cena.adultos || dayData.holiday;
       if (!hasContent) {
-        card.className = "day-card blank-day";
+        card.className = "day-card blank-day" + adjacentClass;
         card.innerHTML = `
-          <div style="position:absolute; top:10px; left:12px; font-size:11px; color:var(--text-soft);">${cell.dow} · ${cell.day}</div>
+          <div style="position:absolute; top:10px; left:12px; font-size:11px; color:var(--text-soft);">${cell.dow} · ${cell.day} · ${MONTH_NAMES[cell.month]}</div>
           <button class="add-link no-print">+ Añadir</button>
         `;
-        card.querySelector(".add-link").onclick = () => openEditDayModal(monthKey, cell.day);
+        card.querySelector(".add-link").onclick = () => openEditDayModal(cell.mk, cell.day);
         grid.appendChild(card);
         return;
       }
-      card.className = "day-card";
+      card.className = "day-card" + adjacentClass;
       const cats = dayCategorySummary(dayData);
       const catTags = cats.map(c => `<span class="tag cat">${escapeHtml(c)}</span>`).join("");
       const kidsLine = condensedMealLine(dayData.comidaNinos);
       const adultLine = condensedMealLine(dayData.comidaAdultos);
       card.innerHTML = `
         <div class="day-head">
-          <div><span class="dow">${cell.dow}</span><span class="num">${cell.day} · ${MONTH_NAMES[m.month]}</span></div>
+          <div><span class="dow">${cell.dow}</span><span class="num">${cell.day} · ${MONTH_NAMES[cell.month]}</span></div>
           <button class="edit-btn no-print">✎ Editar</button>
         </div>
         ${dayData.holiday ? `<div class="holiday-badge">🎉 ${escapeHtml(dayData.holidayName || "Festivo")}</div>` : ""}
         ${dayData.desayuno ? `<div class="meal-line" title="${escapeHtml(dayData.desayuno)}"><b>Desayuno:</b> ${escapeHtml(dayData.desayuno)}</div>` : ""}
         ${kidsLine ? `<div class="meal-line kids" title="${escapeHtml(kidsLine)}"><b>Niños:</b> ${escapeHtml(kidsLine)}</div>` : ""}
         ${adultLine ? `<div class="meal-line adults" title="${escapeHtml(adultLine)}"><b>Adultos:</b> ${escapeHtml(adultLine)}</div>` : ""}
-        ${dayData.cena ? `<div class="meal-line" title="${escapeHtml(dayData.cena)}"><b>Cena:</b> ${escapeHtml(dayData.cena)}</div>` : ""}
+        ${dayData.merienda ? `<div class="meal-line" title="${escapeHtml(dayData.merienda)}"><b>Merienda:</b> ${escapeHtml(dayData.merienda)}</div>` : ""}
+        ${dayData.cena.ninos ? `<div class="meal-line kids" title="${escapeHtml(dayData.cena.ninos)}"><b>Cena niños:</b> ${escapeHtml(dayData.cena.ninos)}</div>` : ""}
+        ${dayData.cena.adultos ? `<div class="meal-line adults" title="${escapeHtml(dayData.cena.adultos)}"><b>Cena adultos:</b> ${escapeHtml(dayData.cena.adultos)}</div>` : ""}
         ${cats.length ? `<div class="day-cats">Hoy comimos: ${catTags}</div>` : ""}
       `;
-      card.querySelector(".edit-btn").onclick = () => openEditDayModal(monthKey, cell.day);
+      card.querySelector(".edit-btn").onclick = () => openEditDayModal(cell.mk, cell.day);
       grid.appendChild(card);
     });
     weekDiv.appendChild(grid);
@@ -1461,7 +1543,9 @@ function openEditDayModal(monthKey, day) {
   document.getElementById("daySegundoAd").value = data.comidaAdultos.segundo || "";
   document.getElementById("dayGuarnicionAd").value = data.comidaAdultos.guarnicion || "";
   document.getElementById("dayPostreAd").value = data.comidaAdultos.postre || "";
-  document.getElementById("dayCena").value = data.cena || "";
+  document.getElementById("dayMerienda").value = data.merienda || "";
+  document.getElementById("dayCenaNinos").value = (data.cena && data.cena.ninos) || "";
+  document.getElementById("dayCenaAdultos").value = (data.cena && data.cena.adultos) || "";
   refreshRecipeDatalist();
   document.getElementById("dayModalBackdrop").classList.add("show");
 }
@@ -1472,7 +1556,7 @@ document.getElementById("cancelDayModal").onclick = () => document.getElementByI
 document.getElementById("clearDayBtn").onclick = () => {
   document.getElementById("dayHoliday").checked = false;
   document.getElementById("holidayNameField").style.display = "none";
-  ["dayHolidayName","dayDesayuno","dayPrimero","daySegundo","dayGuarnicion","dayPostre","dayPrimeroAd","daySegundoAd","dayGuarnicionAd","dayPostreAd","dayCena"].forEach(id => document.getElementById(id).value = "");
+  ["dayHolidayName","dayDesayuno","dayPrimero","daySegundo","dayGuarnicion","dayPostre","dayPrimeroAd","daySegundoAd","dayGuarnicionAd","dayPostreAd","dayMerienda","dayCenaNinos","dayCenaAdultos"].forEach(id => document.getElementById(id).value = "");
 };
 document.getElementById("saveDayBtn").onclick = async () => {
   if (!editingContext) return;
@@ -1492,7 +1576,11 @@ document.getElementById("saveDayBtn").onclick = async () => {
       guarnicion: document.getElementById("dayGuarnicionAd").value.trim(),
       postre: document.getElementById("dayPostreAd").value.trim(),
     },
-    cena: document.getElementById("dayCena").value.trim(),
+    merienda: document.getElementById("dayMerienda").value.trim(),
+    cena: {
+      ninos: document.getElementById("dayCenaNinos").value.trim(),
+      adultos: document.getElementById("dayCenaAdultos").value.trim(),
+    },
   };
   const {monthKey} = editingContext;
   setDay(monthKey, editingContext.day, data);
@@ -1502,8 +1590,11 @@ document.getElementById("saveDayBtn").onclick = async () => {
   saveBtn.disabled = false; saveBtn.textContent = "Guardar";
   if (!ok) return; // el error ya se ha avisado dentro de postToSheet()
   document.getElementById("dayModalBackdrop").classList.remove("show");
+  renderMonthSelect();
   renderMonth(currentMonthKey);
+  renderKidsMonthSelect();
   renderKidsMenu(currentMonthKey);
+  renderShoppingMonthSelect();
   renderShoppingTab();
 };
 
@@ -1745,7 +1836,7 @@ function generateRandomMonth(monthKey) {
       changed = true;
     }
 
-    if (!day.cena) {
+    if (!day.cena.ninos && !day.cena.adultos) {
       const lunchMain = day.comidaNinos.segundo || day.comidaAdultos.segundo || day.comidaNinos.primero || day.comidaAdultos.primero;
       const lunchProtein = proteinCategoryOf(lunchMain);
       const cenaRecipes = menuEligibleRecipes().filter(r => r.meals.includes("Cena"));
@@ -1755,7 +1846,7 @@ function generateRandomMonth(monthKey) {
       else if (lunchProtein === "huevo") filtered = cenaRecipes.filter(r => r.cats.includes("Proteína animal (pescado/marisco)") || /Hortalizas/i.test(r.name));
       else filtered = cenaRecipes;
       const pick = pickRandomRecipe(filtered.length ? filtered : cenaRecipes, []);
-      if (pick) { day.cena = pick.name; changed = true; }
+      if (pick) { day.cena = { ninos: pick.name, adultos: pick.name }; changed = true; }
     }
 
     if (changed) { setDay(monthKey, dayNum, day); daysFilled.push(dayNum); }
@@ -1882,7 +1973,7 @@ function computeShoppingItems(monthKey, weekIdx, dayFilter) {
   const manual = {};
   daysToUse.forEach(dnum => {
     const data = getDay(monthKey, dnum);
-    const allTexts = [data.desayuno, data.cena].concat(mealItems(data.comidaNinos)).concat(mealItems(data.comidaAdultos));
+    const allTexts = [data.desayuno, data.merienda, data.cena.ninos, data.cena.adultos].concat(mealItems(data.comidaNinos)).concat(mealItems(data.comidaAdultos));
     allTexts.forEach(txt => {
       if (!txt || !txt.trim()) return;
       const r = findRecipeByName(txt);

@@ -35,19 +35,31 @@ const SHEETS = {
     // ir siempre al final de este array (ver migración de cabeceras en
     // getOrCreateSheet_), para no desplazar las columnas ya existentes en
     // hojas reales que la gente ya tiene con datos.
-    headers: ["id", "name", "short", "meals", "cats", "desc", "ingredients", "allergens", "source", "url", "custom", "inMenu"],
-    arrayFields: ["meals", "cats", "ingredients", "allergens"],
+    headers: ["id", "name", "short", "meals", "cats", "desc", "ingredients", "allergens", "source", "url", "custom", "inMenu", "audience"],
+    arrayFields: ["meals", "cats", "ingredients", "allergens", "audience"],
     boolFields: ["custom"],
     // Como "boolFields", pero si la celda está vacía (recetas ya existentes
     // antes de añadir esta columna) se interpreta como true, no false —
     // para que no desaparezcan del menú aleatorio recetas ya guardadas.
     boolFieldsDefaultTrue: ["inMenu"],
+    // Como "boolFieldsDefaultTrue", pero para campos de tipo array: si la
+    // celda está vacía se usa este valor por defecto en vez de []. Así las
+    // recetas ya existentes antes de añadir "audience" se consideran válidas
+    // para niños y adultos, no para ninguno de los dos.
+    arrayFieldsDefault: { audience: ["Niños", "Adultos"] },
   },
   days: {
     name: "MenuDias",
+    // "merienda", "cenaNinos" y "cenaAdultos" se añadieron al final: la cena
+    // pasó de ser un único campo familiar ("cena") a separarse por niños y
+    // adultos, igual que la comida. La columna "cena" se conserva como
+    // espejo legible del valor de adultos, para quien mire la hoja a mano;
+    // la app ya no la lee salvo como último recurso en días guardados antes
+    // de este cambio (ver flatToDay en index.html).
     headers: ["monthKey", "day", "holiday", "holidayName", "desayuno",
       "ninosPrimero", "ninosSegundo", "ninosGuarnicion", "ninosPostre",
-      "adultosPrimero", "adultosSegundo", "adultosGuarnicion", "adultosPostre", "cena"],
+      "adultosPrimero", "adultosSegundo", "adultosGuarnicion", "adultosPostre", "cena",
+      "merienda", "cenaNinos", "cenaAdultos"],
     arrayFields: [],
     boolFields: ["holiday"],
   },
@@ -126,7 +138,11 @@ function rowToObj_(cfg, headers, row) {
   headers.forEach((h, i) => {
     let v = row[i];
     if (cfg.arrayFields.indexOf(h) !== -1) {
-      try { v = v ? JSON.parse(v) : []; } catch (e) { v = []; }
+      try { v = v ? JSON.parse(v) : null; } catch (e) { v = null; }
+      if (!v || !v.length) {
+        const def = (cfg.arrayFieldsDefault || {})[h];
+        v = def ? def.slice() : [];
+      }
     } else if ((cfg.boolFieldsDefaultTrue || []).indexOf(h) !== -1) {
       v = !(v === false || v === "false" || v === "FALSE");
     } else if (cfg.boolFields.indexOf(h) !== -1) {
