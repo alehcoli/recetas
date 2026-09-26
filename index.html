@@ -797,12 +797,18 @@ function applyLoadedData(data) {
 
   monthsData = {};
   (Array.isArray(data.days) ? data.days : []).forEach(row => {
-    const mk = row.monthKey;
-    if (!mk) return;
-    if (!monthsData[mk]) {
-      const [y, m] = mk.split("-").map(Number);
-      monthsData[mk] = { year: y, month: m - 1, days: {} };
-    }
+    const raw = row.monthKey;
+    if (!raw) return;
+    // Normaliza la clave a "YYYY-MM": si la columna monthKey de la Sheet se ha
+    // formateado alguna vez como fecha, Apps Script la devuelve como fecha
+    // completa (p. ej. "2026-09-01T07:00:00.000Z") en vez de texto plano. Los
+    // dos primeros trozos separados por "-" siguen siendo año y mes en
+    // cualquiera de los dos casos, así que basta con quedarnos con esos.
+    const [yStr, mStr] = String(raw).split("-");
+    const y = Number(yStr), mo = Number(mStr);
+    if (!y || !mo) return;
+    const mk = monthKeyOf(y, mo - 1);
+    if (!monthsData[mk]) monthsData[mk] = { year: y, month: mo - 1, days: {} };
     monthsData[mk].days[Number(row.day)] = flatToDay(row);
   });
   if (!Object.keys(monthsData).length) monthsData = JSON.parse(JSON.stringify(SEED_MONTHS));
@@ -928,10 +934,12 @@ async function persistDay(monthKey, dayNum) {
   const res = await postToSheet({ resource: "day", action: "set", day: flat });
   return !!res;
 }
-/** Guarda en la Sheet varios días de una vez (usado por el generador de menú aleatorio, que puede cambiar muchos días en una sola pasada). */
-async function persistDays(monthKey, dayNums) {
-  if (!dayNums.length) return true;
-  const days = dayNums.map(dn => dayToFlat(monthKey, dn, getDay(monthKey, dn)));
+/** Guarda en la Sheet varios días de una vez (usado por el generador de menú
+ *  aleatorio, que puede cambiar muchos días en una sola pasada, incluidos
+ *  días de un mes vecino — por eso cada entrada lleva su propia clave de mes). */
+async function persistDays(entries) {
+  if (!entries.length) return true;
+  const days = entries.map(e => dayToFlat(e.mk, e.day, getDay(e.mk, e.day)));
   const res = await postToSheet({ resource: "day", action: "bulkSet", days });
   return !!res;
 }
@@ -1790,11 +1798,17 @@ function generateRandomMonth(monthKey) {
   const recentDesayunos = [];
   const daysFilled = [];
 
+  // Recorre TODAS las celdas visibles del mes (incluidas las de fuera del mes
+  // natural que completan la primera/última semana), no solo los días del
+  // mes en curso — así "Generar menú aleatorio" rellena el mes tal y como se
+  // ve en pantalla. Cada celda guarda su propia clave de mes (mk), así que
+  // los días de un mes vecino se guardan en su mes real.
   const weeks = buildMonthGrid(m.year, m.month);
-  const allDays = weeks.flat().filter(c => c.inMonth).map(c => c.day).sort((a,b) => a-b);
+  const allCells = weeks.flat();
 
-  allDays.forEach(dayNum => {
-    const day = getDay(monthKey, dayNum);
+  allCells.forEach(cell => {
+    const dayNum = cell.day, cellMk = cell.mk;
+    const day = getDay(cellMk, dayNum);
     if (day.holiday) return; // no se toca un día marcado como festivo
     let changed = false;
 
@@ -1849,7 +1863,7 @@ function generateRandomMonth(monthKey) {
       if (pick) { day.cena = { ninos: pick.name, adultos: pick.name }; changed = true; }
     }
 
-    if (changed) { setDay(monthKey, dayNum, day); daysFilled.push(dayNum); }
+    if (changed) { setDay(cellMk, dayNum, day); daysFilled.push({ mk: cellMk, day: dayNum }); }
   });
 
   return daysFilled;
@@ -1857,16 +1871,16 @@ function generateRandomMonth(monthKey) {
 
 document.getElementById("randomMenuBtn").onclick = async () => {
   const ok = confirm(
-    "Voy a proponer desayuno, comida de adultos y cena para los días de " + monthLabel(currentMonthKey) +
-    " que tengas vacíos, cuidando la variedad (evitando repetir mucho lo mismo), dando más peso a pescado, " +
-    "legumbres y fruta, y variando respecto a lo que coman los niños ese día. No tocaré nada de lo que ya " +
-    "hayas rellenado ni el menú de los niños.\n\n¿Continuar?"
+    "Voy a proponer desayuno, comida de adultos y cena para todos los días que ves en pantalla de " + monthLabel(currentMonthKey) +
+    " (incluidos los de otros meses que completan la semana) que tengas vacíos, cuidando la variedad " +
+    "(evitando repetir mucho lo mismo), dando más peso a pescado, legumbres y fruta, y variando respecto a " +
+    "lo que coman los niños ese día. No tocaré nada de lo que ya hayas rellenado ni el menú de los niños.\n\n¿Continuar?"
   );
   if (!ok) return;
   const btn = document.getElementById("randomMenuBtn");
   btn.disabled = true; btn.textContent = "Generando…";
   const changedDays = generateRandomMonth(currentMonthKey);
-  const saved = await persistDays(currentMonthKey, changedDays);
+  const saved = await persistDays(changedDays);
   btn.disabled = false; btn.textContent = "🎲 Generar menú aleatorio";
   if (!saved) return; // el error ya se ha avisado dentro de postToSheet()
   renderMonth(currentMonthKey);
