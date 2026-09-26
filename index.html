@@ -1442,8 +1442,8 @@ function renderMonth(monthKey) {
         </div>
         ${dayData.holiday ? `<div class="holiday-badge">🎉 ${escapeHtml(dayData.holidayName || "Festivo")}</div>` : ""}
         ${dayData.desayuno ? `<div class="meal-line" title="${escapeHtml(dayData.desayuno)}"><b>Desayuno:</b> ${escapeHtml(dayData.desayuno)}</div>` : ""}
-        ${kidsLine ? `<div class="meal-line kids" title="${escapeHtml(kidsLine)}"><b>Niños:</b> ${escapeHtml(kidsLine)}</div>` : ""}
-        ${adultLine ? `<div class="meal-line adults" title="${escapeHtml(adultLine)}"><b>Adultos:</b> ${escapeHtml(adultLine)}</div>` : ""}
+        ${kidsLine ? `<div class="meal-line kids" title="${escapeHtml(kidsLine)}"><b>Comida niños:</b> ${escapeHtml(kidsLine)}</div>` : ""}
+        ${adultLine ? `<div class="meal-line adults" title="${escapeHtml(adultLine)}"><b>Comida adultos:</b> ${escapeHtml(adultLine)}</div>` : ""}
         ${dayData.merienda ? `<div class="meal-line" title="${escapeHtml(dayData.merienda)}"><b>Merienda:</b> ${escapeHtml(dayData.merienda)}</div>` : ""}
         ${dayData.cena.ninos ? `<div class="meal-line kids" title="${escapeHtml(dayData.cena.ninos)}"><b>Cena niños:</b> ${escapeHtml(dayData.cena.ninos)}</div>` : ""}
         ${dayData.cena.adultos ? `<div class="meal-line adults" title="${escapeHtml(dayData.cena.adultos)}"><b>Cena adultos:</b> ${escapeHtml(dayData.cena.adultos)}</div>` : ""}
@@ -1796,6 +1796,7 @@ function generateRandomMonth(monthKey) {
   let totalAdultDays = 0;
   const recentAdultDishes = [];
   const recentDesayunos = [];
+  const recentMeriendas = [];
   const daysFilled = [];
 
   // Recorre TODAS las celdas visibles del mes (incluidas las de fuera del mes
@@ -1863,6 +1864,15 @@ function generateRandomMonth(monthKey) {
       if (pick) { day.cena = { ninos: pick.name, adultos: pick.name }; changed = true; }
     }
 
+    // La merienda solo se autorrellena entre semana (días de cole) — en fin
+    // de semana no sigue esa rutina, así que se deja siempre a mano.
+    const isWeekend = cell.dow === "Sáb" || cell.dow === "Dom";
+    if (!day.merienda && !isWeekend) {
+      const options = menuEligibleRecipes().filter(r => r.meals.includes("Merienda"));
+      const pick = pickRandomRecipe(options, recentMeriendas.slice(-2));
+      if (pick) { day.merienda = pick.name; recentMeriendas.push(pick.name); changed = true; }
+    }
+
     if (changed) { setDay(cellMk, dayNum, day); daysFilled.push({ mk: cellMk, day: dayNum }); }
   });
 
@@ -1871,7 +1881,7 @@ function generateRandomMonth(monthKey) {
 
 document.getElementById("randomMenuBtn").onclick = async () => {
   const ok = confirm(
-    "Voy a proponer desayuno, comida de adultos y cena para todos los días que ves en pantalla de " + monthLabel(currentMonthKey) +
+    "Voy a proponer desayuno, comida de adultos, merienda (excepto fines de semana) y cena para todos los días que ves en pantalla de " + monthLabel(currentMonthKey) +
     " (incluidos los de otros meses que completan la semana) que tengas vacíos, cuidando la variedad " +
     "(evitando repetir mucho lo mismo), dando más peso a pescado, legumbres y fruta, y variando respecto a " +
     "lo que coman los niños ese día. No tocaré nada de lo que ya hayas rellenado ni el menú de los niños.\n\n¿Continuar?"
