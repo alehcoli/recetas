@@ -144,6 +144,12 @@
   .field.checkbox-field { display: flex; align-items: center; gap: 8px; }
   .field.checkbox-field label { margin: 0; }
   .modal .chip-row { margin-top: 2px; }
+  .kids-block.readonly { background: #f3f3f2; border-radius: 8px; padding: 10px 10px 2px; margin: 0 -10px; }
+  .kids-block.readonly .kids-block-title,
+  .kids-block.readonly .field label { color: #9aa3a0 !important; }
+  .kids-block.readonly input {
+    background: #ececea; color: #8a908d; border-color: #dcdcda; cursor: not-allowed;
+  }
   .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
   .modal-actions .spacer { flex: 1; }
 
@@ -151,6 +157,9 @@
   .menu-controls { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
   .menu-controls .left, .menu-controls .right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .week { margin-bottom: 20px; }
+  .week-header { display: flex; justify-content: flex-end; margin-bottom: 6px; }
+  .week-filter-toggle { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-soft); cursor: pointer; user-select: none; }
+  .week-filter-toggle input { width: 15px; height: 15px; }
   .week-grid { display: grid; grid-template-columns: repeat(7, minmax(170px, 1fr)); gap: 12px; }
   .day-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; position: relative; min-height: 90px; }
   .day-card .day-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 6px; }
@@ -291,6 +300,10 @@
     <div class="menu-controls no-print">
       <div class="left">
         <select id="monthSelect"></select>
+        <label class="week-filter-toggle">
+          <input type="checkbox" id="onlyCurrentWeekToggle">
+          Solo semana actual
+        </label>
       </div>
       <div class="right">
         <button class="btn secondary" id="randomMenuBtn">🎲 Generar menú aleatorio</button>
@@ -443,28 +456,30 @@
       <input type="text" id="dayHolidayName" placeholder="Ej. Fiesta local">
     </div>
     <div class="field">
-      <label>Desayuno (familia)</label>
+      <label>Desayuno</label>
       <input type="text" id="dayDesayuno" list="recipeNamesList">
     </div>
-    <div class="modal-sub" style="margin:14px 0 6px; font-weight:700; color:var(--green-dark);">🍽️ Comida — Niños (cole)</div>
-    <div class="field-row">
-      <div class="field">
-        <label>Primero</label>
-        <input type="text" id="dayPrimero" list="recipeNamesList">
+    <div id="kidsComidaBlock" class="kids-block">
+      <div class="modal-sub kids-block-title" style="margin:14px 0 6px; font-weight:700; color:var(--green-dark);">🍽️ Comida — Niños (cole)</div>
+      <div class="field-row">
+        <div class="field">
+          <label>Primero</label>
+          <input type="text" id="dayPrimero" list="recipeNamesList">
+        </div>
+        <div class="field">
+          <label>Segundo</label>
+          <input type="text" id="daySegundo" list="recipeNamesList">
+        </div>
       </div>
-      <div class="field">
-        <label>Segundo</label>
-        <input type="text" id="daySegundo" list="recipeNamesList">
-      </div>
-    </div>
-    <div class="field-row">
-      <div class="field">
-        <label>Guarnición</label>
-        <input type="text" id="dayGuarnicion" list="recipeNamesList">
-      </div>
-      <div class="field">
-        <label>Postre</label>
-        <input type="text" id="dayPostre" list="recipeNamesList">
+      <div class="field-row">
+        <div class="field">
+          <label>Guarnición</label>
+          <input type="text" id="dayGuarnicion" list="recipeNamesList">
+        </div>
+        <div class="field">
+          <label>Postre</label>
+          <input type="text" id="dayPostre" list="recipeNamesList">
+        </div>
       </div>
     </div>
     <div class="modal-sub" style="margin:14px 0 6px; font-weight:700; color:var(--blue);">🍽️ Comida — Adultos</div>
@@ -478,29 +493,33 @@
         <input type="text" id="daySegundoAd" list="recipeNamesList">
       </div>
     </div>
-    <div class="field-row">
-      <div class="field">
-        <label>Guarnición</label>
-        <input type="text" id="dayGuarnicionAd" list="recipeNamesList">
-      </div>
-      <div class="field">
-        <label>Postre</label>
-        <input type="text" id="dayPostreAd" list="recipeNamesList">
-      </div>
-    </div>
     <div class="field" style="margin-top:14px;">
-      <label>Merienda (familia)</label>
+      <label>Merienda</label>
       <input type="text" id="dayMerienda" list="recipeNamesList">
     </div>
-    <div class="modal-sub" style="margin:14px 0 6px; font-weight:700; color:var(--green-dark);">🌙 Cena — Niños</div>
-    <div class="field">
-      <label>Plato</label>
-      <input type="text" id="dayCenaNinos" list="recipeNamesList">
+    <div id="kidsCenaBlock" class="kids-block">
+      <div class="modal-sub kids-block-title" style="margin:14px 0 6px; font-weight:700; color:var(--green-dark);">🌙 Cena — Niños</div>
+      <div class="field-row">
+        <div class="field">
+          <label>Primero</label>
+          <input type="text" id="dayCenaNinosPrimero" list="recipeNamesList">
+        </div>
+        <div class="field">
+          <label>Segundo</label>
+          <input type="text" id="dayCenaNinosSegundo" list="recipeNamesList">
+        </div>
+      </div>
     </div>
     <div class="modal-sub" style="margin:8px 0 6px; font-weight:700; color:var(--blue);">🌙 Cena — Adultos</div>
-    <div class="field">
-      <label>Plato</label>
-      <input type="text" id="dayCenaAdultos" list="recipeNamesList">
+    <div class="field-row">
+      <div class="field">
+        <label>Primero</label>
+        <input type="text" id="dayCenaAdultosPrimero" list="recipeNamesList">
+      </div>
+      <div class="field">
+        <label>Segundo</label>
+        <input type="text" id="dayCenaAdultosSegundo" list="recipeNamesList">
+      </div>
     </div>
     <datalist id="recipeNamesList"></datalist>
     <div class="modal-actions">
@@ -683,7 +702,7 @@ function d(desayuno, primero, segundo, guarnicion, postre, cena) {
     comidaNinos: {primero: primero||"", segundo: segundo||"", guarnicion: guarnicion||"", postre: postre||""},
     comidaAdultos: {primero:"", segundo:"", guarnicion:"", postre:""},
     merienda: "",
-    cena: {ninos: cena||"", adultos: cena||""}
+    cena: {ninos: {primero: cena||"", segundo:""}, adultos: {primero: cena||"", segundo:""}}
   };
 }
 const SEED_MONTHS = {
@@ -767,6 +786,8 @@ function dayToFlat(monthKey, dayNum, day) {
   const kids = day.comidaNinos || {};
   const adults = day.comidaAdultos || {};
   const cena = day.cena || {};
+  const cenaNinos = cena.ninos || {};
+  const cenaAdultos = cena.adultos || {};
   return {
     monthKey, day: Number(dayNum),
     holiday: !!day.holiday, holidayName: day.holidayName || "", desayuno: day.desayuno || "",
@@ -775,20 +796,28 @@ function dayToFlat(monthKey, dayNum, day) {
     adultosPrimero: adults.primero || "", adultosSegundo: adults.segundo || "",
     adultosGuarnicion: adults.guarnicion || "", adultosPostre: adults.postre || "",
     merienda: day.merienda || "",
-    cenaNinos: cena.ninos || "", cenaAdultos: cena.adultos || "",
-    // "cena" se mantiene como espejo legible en la Sheet (para quien la mire
-    // a mano) y como referencia histórica; la app ya no la lee, usa cenaNinos/cenaAdultos.
-    cena: cena.adultos || cena.ninos || "",
+    cenaNinosPrimero: cenaNinos.primero || "", cenaNinosSegundo: cenaNinos.segundo || "",
+    cenaAdultosPrimero: cenaAdultos.primero || "", cenaAdultosSegundo: cenaAdultos.segundo || "",
+    // cenaNinos/cenaAdultos/cena se mantienen como espejo legible en la Sheet
+    // (para quien la mire a mano) y como referencia histórica de versiones
+    // anteriores; la app ya no las lee, usa cenaNinos/AdultosPrimero/Segundo.
+    cenaNinos: cenaNinos.primero || "", cenaAdultos: cenaAdultos.primero || "",
+    cena: cenaAdultos.primero || cenaNinos.primero || "",
   };
 }
 function flatToDay(row) {
   const legacyCena = row.cena || ""; // días guardados antes de separar cena en niños/adultos
+  const legacyCenaNinos = row.cenaNinos || ""; // días guardados antes de añadir primero/segundo a la cena
+  const legacyCenaAdultos = row.cenaAdultos || "";
   return {
     holiday: !!row.holiday, holidayName: row.holidayName || "", desayuno: row.desayuno || "",
     comidaNinos: { primero: row.ninosPrimero || "", segundo: row.ninosSegundo || "", guarnicion: row.ninosGuarnicion || "", postre: row.ninosPostre || "" },
     comidaAdultos: { primero: row.adultosPrimero || "", segundo: row.adultosSegundo || "", guarnicion: row.adultosGuarnicion || "", postre: row.adultosPostre || "" },
     merienda: row.merienda || "",
-    cena: { ninos: row.cenaNinos || legacyCena, adultos: row.cenaAdultos || legacyCena },
+    cena: {
+      ninos: { primero: row.cenaNinosPrimero || legacyCenaNinos || legacyCena || "", segundo: row.cenaNinosSegundo || "" },
+      adultos: { primero: row.cenaAdultosPrimero || legacyCenaAdultos || legacyCena || "", segundo: row.cenaAdultosSegundo || "" },
+    },
   };
 }
 
@@ -1007,7 +1036,7 @@ let activeCatFilters = new Set();
 let activeOriginFilters = new Set();
 let searchTerm = "";
 
-function defaultDay() { return {holiday:false, holidayName:"", desayuno:"", comidaNinos:{primero:"",segundo:"",guarnicion:"",postre:""}, comidaAdultos:{primero:"",segundo:"",guarnicion:"",postre:""}, merienda:"", cena:{ninos:"",adultos:""}}; }
+function defaultDay() { return {holiday:false, holidayName:"", desayuno:"", comidaNinos:{primero:"",segundo:"",guarnicion:"",postre:""}, comidaAdultos:{primero:"",segundo:"",guarnicion:"",postre:""}, merienda:"", cena:{ninos:{primero:"",segundo:""},adultos:{primero:"",segundo:""}}}; }
 function getDay(monthKey, day) {
   const m = monthsData[monthKey];
   if (!m) return defaultDay();
@@ -1368,6 +1397,22 @@ function renderMonthSelect() {
   });
   sel.onchange = () => { currentMonthKey = sel.value; renderMonth(currentMonthKey); };
 }
+document.getElementById("onlyCurrentWeekToggle").onchange = () => renderMonth(currentMonthKey);
+
+/** Cambia a la pestaña "Lista de la compra" con el mes y la semana indicados ya seleccionados. */
+function goToShoppingWeek(monthKey, weekIdx) {
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+  document.querySelector('.tab-btn[data-tab="compra"]').classList.add("active");
+  document.getElementById("panel-compra").classList.add("active");
+
+  renderShoppingMonthSelect();
+  document.getElementById("shopMonthSelect").value = monthKey;
+  renderShoppingWeekSelect();
+  document.getElementById("shopWeekSelect").value = String(weekIdx);
+  renderShoppingDaySelect();
+  renderShoppingTab();
+}
 
 function mealItems(obj) { return [obj.primero, obj.segundo, obj.guarnicion, obj.postre].filter(Boolean); }
 
@@ -1383,8 +1428,8 @@ function shortLabelFor(name) {
 
 // Línea resumida para el calendario familiar: primero + segundo + guarnición (sin postre),
 // acortados y sin repetir el mismo nombre corto dos veces (ej. un cocido queda solo como "Cocido").
-function condensedMealLine(obj) {
-  const raw = [obj.primero, obj.segundo, obj.guarnicion].filter(Boolean);
+function condensedMealLine(obj, includeGuarnicion) {
+  const raw = [obj.primero, obj.segundo, includeGuarnicion === false ? null : obj.guarnicion].filter(Boolean);
   const shortened = raw.map(shortLabelFor);
   const deduped = shortened.filter((val, idx) => shortened.indexOf(val) === idx);
   return deduped.join(" · ");
@@ -1392,9 +1437,11 @@ function condensedMealLine(obj) {
 
 function dayCategorySummary(dayData) {
   const cats = new Set();
-  const texts = [dayData.desayuno, dayData.merienda, dayData.cena.ninos, dayData.cena.adultos]
+  const texts = [dayData.desayuno, dayData.merienda]
     .concat(mealItems(dayData.comidaNinos))
-    .concat(mealItems(dayData.comidaAdultos));
+    .concat(mealItems(dayData.comidaAdultos))
+    .concat(mealItems(dayData.cena.ninos))
+    .concat(mealItems(dayData.cena.adultos));
   texts.forEach(txt => {
     const r = findRecipeByName(txt);
     if (r) r.cats.forEach(c => cats.add(c));
@@ -1408,9 +1455,25 @@ function renderMonth(monthKey) {
   container.innerHTML = "";
   if (!m) { container.innerHTML = "<p>Aún no tengo el menú de este mes.</p>"; return; }
   const weeks = buildMonthGrid(m.year, m.month);
-  weeks.forEach(week => {
+  const today = new Date();
+  const isToday = cell => cell.year === today.getFullYear() && cell.month === today.getMonth() && cell.day === today.getDate();
+  let weekEntries = weeks.map((week, idx) => ({ week, idx }));
+  const onlyCurrentWeekToggle = document.getElementById("onlyCurrentWeekToggle");
+  if (onlyCurrentWeekToggle && onlyCurrentWeekToggle.checked) {
+    const match = weekEntries.find(e => e.week.some(isToday));
+    if (match) weekEntries = [match];
+  }
+  weekEntries.forEach(({ week, idx: weekIdx }) => {
     const weekDiv = document.createElement("div");
     weekDiv.className = "week";
+    const weekHeader = document.createElement("div");
+    weekHeader.className = "week-header no-print";
+    const shopBtn = document.createElement("button");
+    shopBtn.className = "btn secondary small";
+    shopBtn.textContent = "🛒 Ver compra de esta semana";
+    shopBtn.onclick = () => goToShoppingWeek(monthKey, weekIdx);
+    weekHeader.appendChild(shopBtn);
+    weekDiv.appendChild(weekHeader);
     const grid = document.createElement("div");
     grid.className = "week-grid";
     week.forEach(cell => {
@@ -1419,14 +1482,16 @@ function renderMonth(monthKey) {
       const dayData = getDay(cell.mk, cell.day);
       const kidsItems = mealItems(dayData.comidaNinos);
       const adultItems = mealItems(dayData.comidaAdultos);
-      const hasContent = dayData.desayuno || dayData.merienda || kidsItems.length || adultItems.length || dayData.cena.ninos || dayData.cena.adultos || dayData.holiday;
+      const cenaNinosItems = mealItems(dayData.cena.ninos);
+      const cenaAdultosItems = mealItems(dayData.cena.adultos);
+      const hasContent = dayData.desayuno || dayData.merienda || kidsItems.length || adultItems.length || cenaNinosItems.length || cenaAdultosItems.length || dayData.holiday;
       if (!hasContent) {
         card.className = "day-card blank-day" + adjacentClass;
         card.innerHTML = `
           <div style="position:absolute; top:10px; left:12px; font-size:11px; color:var(--text-soft);">${cell.dow} · ${cell.day} · ${MONTH_NAMES[cell.month]}</div>
           <button class="add-link no-print">+ Añadir</button>
         `;
-        card.querySelector(".add-link").onclick = () => openEditDayModal(cell.mk, cell.day);
+        card.querySelector(".add-link").onclick = () => openEditDayModal(cell.mk, cell.day, { readOnlyKids: true });
         grid.appendChild(card);
         return;
       }
@@ -1434,7 +1499,9 @@ function renderMonth(monthKey) {
       const cats = dayCategorySummary(dayData);
       const catTags = cats.map(c => `<span class="tag cat">${escapeHtml(c)}</span>`).join("");
       const kidsLine = condensedMealLine(dayData.comidaNinos);
-      const adultLine = condensedMealLine(dayData.comidaAdultos);
+      const adultLine = condensedMealLine(dayData.comidaAdultos, false);
+      const cenaNinosLine = condensedMealLine(dayData.cena.ninos);
+      const cenaAdultosLine = condensedMealLine(dayData.cena.adultos);
       card.innerHTML = `
         <div class="day-head">
           <div><span class="dow">${cell.dow}</span><span class="num">${cell.day} · ${MONTH_NAMES[cell.month]}</span></div>
@@ -1445,11 +1512,11 @@ function renderMonth(monthKey) {
         ${kidsLine ? `<div class="meal-line kids" title="${escapeHtml(kidsLine)}"><b>Comida niños:</b> ${escapeHtml(kidsLine)}</div>` : ""}
         ${adultLine ? `<div class="meal-line adults" title="${escapeHtml(adultLine)}"><b>Comida adultos:</b> ${escapeHtml(adultLine)}</div>` : ""}
         ${dayData.merienda ? `<div class="meal-line" title="${escapeHtml(dayData.merienda)}"><b>Merienda:</b> ${escapeHtml(dayData.merienda)}</div>` : ""}
-        ${dayData.cena.ninos ? `<div class="meal-line kids" title="${escapeHtml(dayData.cena.ninos)}"><b>Cena niños:</b> ${escapeHtml(dayData.cena.ninos)}</div>` : ""}
-        ${dayData.cena.adultos ? `<div class="meal-line adults" title="${escapeHtml(dayData.cena.adultos)}"><b>Cena adultos:</b> ${escapeHtml(dayData.cena.adultos)}</div>` : ""}
+        ${cenaNinosLine ? `<div class="meal-line kids" title="${escapeHtml(cenaNinosLine)}"><b>Cena niños:</b> ${escapeHtml(cenaNinosLine)}</div>` : ""}
+        ${cenaAdultosLine ? `<div class="meal-line adults" title="${escapeHtml(cenaAdultosLine)}"><b>Cena adultos:</b> ${escapeHtml(cenaAdultosLine)}</div>` : ""}
         ${cats.length ? `<div class="day-cats">Hoy comimos: ${catTags}</div>` : ""}
       `;
-      card.querySelector(".edit-btn").onclick = () => openEditDayModal(cell.mk, cell.day);
+      card.querySelector(".edit-btn").onclick = () => openEditDayModal(cell.mk, cell.day, { readOnlyKids: true });
       grid.appendChild(card);
     });
     weekDiv.appendChild(grid);
@@ -1535,9 +1602,17 @@ function refreshRecipeDatalist() {
     dl.appendChild(opt);
   });
 }
-function openEditDayModal(monthKey, day) {
-  editingContext = {monthKey, day};
+function openEditDayModal(monthKey, day, opts) {
+  const readOnlyKids = !!(opts && opts.readOnlyKids);
   const data = getDay(monthKey, day);
+  editingContext = {
+    monthKey, day, readOnlyKids,
+    // La guarnición/postre de adultos ya no se editan desde el modal, pero
+    // si un día antiguo los tenía guardados, se conservan sin cambios en
+    // vez de borrarse la próxima vez que se guarde ese día.
+    preservedAdultGuarnicion: data.comidaAdultos.guarnicion || "",
+    preservedAdultPostre: data.comidaAdultos.postre || "",
+  };
   document.getElementById("dayModalTitle").textContent = "Editar día — " + day + " de " + monthLabel(monthKey);
   document.getElementById("dayHoliday").checked = !!data.holiday;
   document.getElementById("holidayNameField").style.display = data.holiday ? "block" : "none";
@@ -1549,11 +1624,19 @@ function openEditDayModal(monthKey, day) {
   document.getElementById("dayPostre").value = data.comidaNinos.postre || "";
   document.getElementById("dayPrimeroAd").value = data.comidaAdultos.primero || "";
   document.getElementById("daySegundoAd").value = data.comidaAdultos.segundo || "";
-  document.getElementById("dayGuarnicionAd").value = data.comidaAdultos.guarnicion || "";
-  document.getElementById("dayPostreAd").value = data.comidaAdultos.postre || "";
   document.getElementById("dayMerienda").value = data.merienda || "";
-  document.getElementById("dayCenaNinos").value = (data.cena && data.cena.ninos) || "";
-  document.getElementById("dayCenaAdultos").value = (data.cena && data.cena.adultos) || "";
+  document.getElementById("dayCenaNinosPrimero").value = data.cena.ninos.primero || "";
+  document.getElementById("dayCenaNinosSegundo").value = data.cena.ninos.segundo || "";
+  document.getElementById("dayCenaAdultosPrimero").value = data.cena.adultos.primero || "";
+  document.getElementById("dayCenaAdultosSegundo").value = data.cena.adultos.segundo || "";
+
+  // Desde "Menú mensual" el menú de los niños se ve pero no se toca — solo
+  // se puede editar de verdad desde "Menú niños (cole)".
+  ["dayPrimero","daySegundo","dayGuarnicion","dayPostre","dayCenaNinosPrimero","dayCenaNinosSegundo"]
+    .forEach(id => { document.getElementById(id).disabled = readOnlyKids; });
+  document.getElementById("kidsComidaBlock").classList.toggle("readonly", readOnlyKids);
+  document.getElementById("kidsCenaBlock").classList.toggle("readonly", readOnlyKids);
+
   refreshRecipeDatalist();
   document.getElementById("dayModalBackdrop").classList.add("show");
 }
@@ -1564,7 +1647,12 @@ document.getElementById("cancelDayModal").onclick = () => document.getElementByI
 document.getElementById("clearDayBtn").onclick = () => {
   document.getElementById("dayHoliday").checked = false;
   document.getElementById("holidayNameField").style.display = "none";
-  ["dayHolidayName","dayDesayuno","dayPrimero","daySegundo","dayGuarnicion","dayPostre","dayPrimeroAd","daySegundoAd","dayGuarnicionAd","dayPostreAd","dayMerienda","dayCenaNinos","dayCenaAdultos"].forEach(id => document.getElementById(id).value = "");
+  const ids = ["dayHolidayName","dayDesayuno","dayPrimeroAd","daySegundoAd","dayMerienda","dayCenaAdultosPrimero","dayCenaAdultosSegundo"];
+  if (!editingContext || !editingContext.readOnlyKids) {
+    ids.push("dayPrimero","daySegundo","dayGuarnicion","dayPostre","dayCenaNinosPrimero","dayCenaNinosSegundo");
+  }
+  ids.forEach(id => document.getElementById(id).value = "");
+  if (editingContext) { editingContext.preservedAdultGuarnicion = ""; editingContext.preservedAdultPostre = ""; }
 };
 document.getElementById("saveDayBtn").onclick = async () => {
   if (!editingContext) return;
@@ -1581,13 +1669,19 @@ document.getElementById("saveDayBtn").onclick = async () => {
     comidaAdultos: {
       primero: document.getElementById("dayPrimeroAd").value.trim(),
       segundo: document.getElementById("daySegundoAd").value.trim(),
-      guarnicion: document.getElementById("dayGuarnicionAd").value.trim(),
-      postre: document.getElementById("dayPostreAd").value.trim(),
+      guarnicion: editingContext.preservedAdultGuarnicion || "",
+      postre: editingContext.preservedAdultPostre || "",
     },
     merienda: document.getElementById("dayMerienda").value.trim(),
     cena: {
-      ninos: document.getElementById("dayCenaNinos").value.trim(),
-      adultos: document.getElementById("dayCenaAdultos").value.trim(),
+      ninos: {
+        primero: document.getElementById("dayCenaNinosPrimero").value.trim(),
+        segundo: document.getElementById("dayCenaNinosSegundo").value.trim(),
+      },
+      adultos: {
+        primero: document.getElementById("dayCenaAdultosPrimero").value.trim(),
+        segundo: document.getElementById("dayCenaAdultosSegundo").value.trim(),
+      },
     },
   };
   const {monthKey} = editingContext;
@@ -1851,7 +1945,8 @@ function generateRandomMonth(monthKey) {
       changed = true;
     }
 
-    if (!day.cena.ninos && !day.cena.adultos) {
+    const cenaEmpty = !day.cena.ninos.primero && !day.cena.ninos.segundo && !day.cena.adultos.primero && !day.cena.adultos.segundo;
+    if (cenaEmpty) {
       const lunchMain = day.comidaNinos.segundo || day.comidaAdultos.segundo || day.comidaNinos.primero || day.comidaAdultos.primero;
       const lunchProtein = proteinCategoryOf(lunchMain);
       const cenaRecipes = menuEligibleRecipes().filter(r => r.meals.includes("Cena"));
@@ -1861,7 +1956,10 @@ function generateRandomMonth(monthKey) {
       else if (lunchProtein === "huevo") filtered = cenaRecipes.filter(r => r.cats.includes("Proteína animal (pescado/marisco)") || /Hortalizas/i.test(r.name));
       else filtered = cenaRecipes;
       const pick = pickRandomRecipe(filtered.length ? filtered : cenaRecipes, []);
-      if (pick) { day.cena = { ninos: pick.name, adultos: pick.name }; changed = true; }
+      if (pick) {
+        day.cena = { ninos: { primero: pick.name, segundo: "" }, adultos: { primero: pick.name, segundo: "" } };
+        changed = true;
+      }
     }
 
     // La merienda solo se autorrellena entre semana (días de cole) — en fin
@@ -1997,7 +2095,7 @@ function computeShoppingItems(monthKey, weekIdx, dayFilter) {
   const manual = {};
   daysToUse.forEach(dnum => {
     const data = getDay(monthKey, dnum);
-    const allTexts = [data.desayuno, data.merienda, data.cena.ninos, data.cena.adultos].concat(mealItems(data.comidaNinos)).concat(mealItems(data.comidaAdultos));
+    const allTexts = [data.desayuno, data.merienda].concat(mealItems(data.comidaNinos)).concat(mealItems(data.comidaAdultos)).concat(mealItems(data.cena.ninos)).concat(mealItems(data.cena.adultos));
     allTexts.forEach(txt => {
       if (!txt || !txt.trim()) return;
       const r = findRecipeByName(txt);
