@@ -50,16 +50,19 @@ const SHEETS = {
   },
   days: {
     name: "MenuDias",
-    // "merienda", "cenaNinos" y "cenaAdultos" se añadieron al final: la cena
-    // pasó de ser un único campo familiar ("cena") a separarse por niños y
-    // adultos, igual que la comida. La columna "cena" se conserva como
-    // espejo legible del valor de adultos, para quien mire la hoja a mano;
-    // la app ya no la lee salvo como último recurso en días guardados antes
-    // de este cambio (ver flatToDay en index.html).
+    // "merienda", "cenaNinos"/"cenaAdultos" y luego "cenaNinosPrimero" etc.
+    // se han ido añadiendo al final: la cena pasó de un único campo familiar
+    // ("cena") a separarse por niños y adultos, y de ahí a tener primero y
+    // segundo cada una, igual que la comida. Las columnas "cena", "cenaNinos"
+    // y "cenaAdultos" se conservan como espejo legible de versiones
+    // anteriores, para quien mire la hoja a mano; la app ya no las lee salvo
+    // como último recurso en días guardados antes de estos cambios (ver
+    // flatToDay en index.html).
     headers: ["monthKey", "day", "holiday", "holidayName", "desayuno",
       "ninosPrimero", "ninosSegundo", "ninosGuarnicion", "ninosPostre",
       "adultosPrimero", "adultosSegundo", "adultosGuarnicion", "adultosPostre", "cena",
-      "merienda", "cenaNinos", "cenaAdultos"],
+      "merienda", "cenaNinos", "cenaAdultos",
+      "cenaNinosPrimero", "cenaNinosSegundo", "cenaAdultosPrimero", "cenaAdultosSegundo"],
     arrayFields: [],
     boolFields: ["holiday"],
   },

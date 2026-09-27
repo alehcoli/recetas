@@ -50,15 +50,22 @@ index.html  ──fetch/POST──>  Google Apps Script (Web App)  ──lee/esc
 - Cada receta tiene también un campo **Público** (niños / adultos / ambos),
   editable desde el mismo modal de añadir/editar receta. Las recetas sin
   este campo (las que ya tenías) se consideran válidas para ambos.
-- El día del **Menú mensual** se divide en Desayuno, Comida (niños/adultos),
-  Merienda y Cena (niños/adultos) — la Cena ahora también se planifica por
-  separado para cada uno, igual que la Comida.
+- El día del **Menú mensual** se divide en Desayuno, Comida (niños con
+  primero/segundo/guarnición/postre, adultos solo con primero/segundo),
+  Merienda y Cena (niños y adultos, cada uno con primero/segundo).
 - **Menú mensual** muestra siempre semanas completas (Lunes-Domingo), no
   solo el mes natural: si la última semana de un mes cae en el mes
   siguiente (o la primera en el anterior), esos días también se ven y se
   pueden editar — se guardan en el mes al que realmente pertenecen. Esos
   días no se rellenan nunca automáticamente con el menú de los niños,
-  porque ese dato es siempre específico de cada mes.
+  porque ese dato es siempre específico de cada mes. Hay un checkbox "Solo
+  semana actual" para no ver todo el mes de golpe, y cada semana tiene un
+  botón "🛒 Ver compra de esta semana" que lleva directamente a la Lista de
+  la compra con esa semana ya seleccionada.
+- Desde **Menú mensual** el menú de los niños (comida y cena) se ve pero no
+  se puede editar — aparece en gris. Para corregirlo hay que ir a **Menú
+  niños (cole)**, que es la única pestaña desde la que se edita de verdad
+  (evita tocarlo sin querer al planificar la comida de los adultos).
 - **Menú mensual** y **Menú niños** se abren por defecto en el último mes
   que tenga cargado el menú del cole (no en el mes más antiguo guardado en
   la Sheet).
