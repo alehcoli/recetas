@@ -92,6 +92,15 @@ hay que pegarlo en el editor de verdad y publicar una nueva versión:
    **Nueva versión** → Implementar (no "nueva implementación", o la URL
    cambiaría y habría que actualizar `SHEET_API_URL` en `index.html`).
 
+**Una sola vez, tras publicar la versión que arregla los duplicados de
+`MenuDias`**: hasta ese arreglo, cada guardado de un día añadía una fila
+nueva en vez de actualizar la existente (Sheets convierte `"2026-10"` en una
+fecha y la búsqueda de la fila nunca coincidía). En el editor de Apps Script,
+elige `limpiarDuplicadosMenuDias` en el desplegable de funciones y pulsa
+▶ Ejecutar. Deja una sola fila por día —la última, que es la que la app ya
+muestra— y antes guarda una copia de la pestaña. Si se ejecuta otra vez, no
+hace nada.
+
 **Solo la primera vez**, para que funcione "✨ Extraer menú con IA":
 
 1. Consigue una API key gratuita de Gemini en
