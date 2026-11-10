@@ -73,6 +73,12 @@ queso fresco de cabra con nueces, yogur de cabra.
 4. Grasa saludable + aliño (AOVE + especias: cúrcuma+limón,
    cúrcuma+jengibre, cúrcuma+comino, romero, mostaza, tahini, yogur…).
 
+### En la app
+"Generar menú aleatorio" (`generateRandomMonth` en `index.html`) aplica ya
+la regla de ternera como mucho una vez cada 10 días
+(`TERNERA_MIN_GAP_DAYS`). El resto de reglas de la pauta no están en el
+código.
+
 ### Recetario
 Las recetas completas de esta pauta (lentejas estofadas, garbanzos con
 espinacas y bacalao, acelgas rehogadas, pisto, coliflor al horno,

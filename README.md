@@ -47,6 +47,11 @@ index.html  ──fetch/POST──>  Google Apps Script (Web App)  ──lee/esc
   escribiéndola a mano en cualquier día. Las recetas que no tengan este
   campo (las que ya tenías antes de este cambio) se consideran incluidas
   por defecto.
+- "🎲 Generar menú aleatorio" no propone **ternera más de una vez cada 10
+  días** (pauta de la nutricionista). Cuenta como ternera cualquier receta
+  con "ternera", "vaca", "vacuno" o "buey" en el nombre o los ingredientes,
+  y también la que hayáis escrito a mano en cualquier comida de casa, antes
+  o después, aunque caiga en el mes de al lado. La comida del cole no cuenta.
 - Cada receta tiene también un campo **Público** (niños / adultos / ambos),
   editable desde el mismo modal de añadir/editar receta. Las recetas sin
   este campo (las que ya tenías) se consideran válidas para ambos.

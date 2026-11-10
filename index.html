@@ -1848,6 +1848,26 @@ function proteinCategoryOf(name) {
 function menuEligibleRecipes() {
   return allRecipes().filter(r => r.inMenu !== false);
 }
+
+// Pauta de la nutricionista: ternera como mucho una vez cada 10 días.
+const TERNERA_RE = /\b(ternera|vaca|vacuno|buey)\b/i;
+const TERNERA_MIN_GAP_DAYS = 10;
+function isTerneraRecipe(r) {
+  return TERNERA_RE.test(r.name) || (r.ingredients || []).some(i => TERNERA_RE.test(i));
+}
+function isTerneraDish(name) {
+  if (!name) return false;
+  const r = findRecipeByName(name);
+  return r ? isTerneraRecipe(r) : TERNERA_RE.test(name);
+}
+// Solo lo que se come en casa: la comida del cole de los niños no cuenta.
+function dayHasTernera(day) {
+  return [day.desayuno, day.merienda]
+    .concat(mealItems(day.comidaAdultos), mealItems(day.cena.ninos), mealItems(day.cena.adultos))
+    .some(isTerneraDish);
+}
+// Número de día absoluto (en UTC para que los cambios de hora no descuadren las restas).
+function dayNumberOf(year, month, day) { return Math.round(Date.UTC(year, month, day) / 86400000); }
 function buildMenuPools() {
   const comida = menuEligibleRecipes().filter(r => r.meals.includes("Comida"));
   const primero = comida.filter(r =>
@@ -1901,14 +1921,32 @@ function generateRandomMonth(monthKey) {
   const weeks = buildMonthGrid(m.year, m.month);
   const allCells = weeks.flat();
 
+  // Días que ya tienen ternera, incluidos los de justo antes y después de lo
+  // visible: un plato de ternera puesto a mano el día 28 del mes anterior
+  // también bloquea los primeros días de este.
+  const terneraDays = [];
+  const firstN = dayNumberOf(allCells[0].year, allCells[0].month, allCells[0].day);
+  const lastCell = allCells[allCells.length - 1];
+  const lastN = dayNumberOf(lastCell.year, lastCell.month, lastCell.day);
+  for (let n = firstN - (TERNERA_MIN_GAP_DAYS - 1); n <= lastN + (TERNERA_MIN_GAP_DAYS - 1); n++) {
+    const t = new Date(n * 86400000);
+    const d = getDay(monthKeyOf(t.getUTCFullYear(), t.getUTCMonth()), t.getUTCDate());
+    if (dayHasTernera(d)) terneraDays.push(n);
+  }
+
   allCells.forEach(cell => {
     const dayNum = cell.day, cellMk = cell.mk;
     const day = getDay(cellMk, dayNum);
     if (day.holiday) return; // no se toca un día marcado como festivo
     let changed = false;
+    const todayN = dayNumberOf(cell.year, cell.month, dayNum);
+    const allowed = list => {
+      const blocked = dayHasTernera(day) || terneraDays.some(n => Math.abs(n - todayN) < TERNERA_MIN_GAP_DAYS);
+      return blocked ? list.filter(r => !isTerneraRecipe(r)) : list;
+    };
 
     if (!day.desayuno) {
-      const options = menuEligibleRecipes().filter(r => r.meals.includes("Desayuno"));
+      const options = allowed(menuEligibleRecipes().filter(r => r.meals.includes("Desayuno")));
       const pick = pickRandomRecipe(options, recentDesayunos.slice(-2));
       if (pick) { day.desayuno = pick.name; recentDesayunos.push(pick.name); changed = true; }
     }
@@ -1924,15 +1962,19 @@ function generateRandomMonth(monthKey) {
         weights[cat] = w;
       });
       const chosenCat = weightedPick(weights);
-      const segundoPool = pools[chosenCat] && pools[chosenCat].length ? pools[chosenCat] : pools.segundo;
+      let segundoPool = allowed(pools[chosenCat] || []);
+      if (!segundoPool.length) segundoPool = allowed(pools.segundo);
       const segundoR = pickRandomRecipe(segundoPool, recentAdultDishes.slice(-3));
+      // Si el segundo ya es de ternera, que no lo sean también el primero o la guarnición.
+      day.comidaAdultos = { primero: "", segundo: segundoR ? segundoR.name : "", guarnicion: "", postre: "" };
       let primeroR;
       if (chosenCat === "legumbre") {
         primeroR = segundoR; // el guiso de legumbre ya hace de plato único
       } else {
-        primeroR = pickRandomRecipe(pools.primero, recentAdultDishes.slice(-3).concat(segundoR ? [segundoR.name] : []));
+        primeroR = pickRandomRecipe(allowed(pools.primero), recentAdultDishes.slice(-3).concat(segundoR ? [segundoR.name] : []));
       }
-      const guarnicionR = pickRandomRecipe(pools.guarnicion, []);
+      if (primeroR) day.comidaAdultos.primero = primeroR.name;
+      const guarnicionR = pickRandomRecipe(allowed(pools.guarnicion), []);
       const postreName = Math.random() < 0.85 ? "Fruta de temporada" : "Yogur sabor";
       day.comidaAdultos = {
         primero: primeroR ? primeroR.name : "",
@@ -1955,7 +1997,9 @@ function generateRandomMonth(monthKey) {
       else if (lunchProtein === "carne") filtered = cenaRecipes.filter(r => r.cats.includes("Proteína animal (pescado/marisco)"));
       else if (lunchProtein === "huevo") filtered = cenaRecipes.filter(r => r.cats.includes("Proteína animal (pescado/marisco)") || /Hortalizas/i.test(r.name));
       else filtered = cenaRecipes;
-      const pick = pickRandomRecipe(filtered.length ? filtered : cenaRecipes, []);
+      let cenaPool = allowed(filtered);
+      if (!cenaPool.length) cenaPool = allowed(cenaRecipes);
+      const pick = pickRandomRecipe(cenaPool, []);
       if (pick) {
         day.cena = { ninos: { primero: pick.name, segundo: "" }, adultos: { primero: pick.name, segundo: "" } };
         changed = true;
@@ -1966,12 +2010,13 @@ function generateRandomMonth(monthKey) {
     // de semana no sigue esa rutina, así que se deja siempre a mano.
     const isWeekend = cell.dow === "Sáb" || cell.dow === "Dom";
     if (!day.merienda && !isWeekend) {
-      const options = menuEligibleRecipes().filter(r => r.meals.includes("Merienda"));
+      const options = allowed(menuEligibleRecipes().filter(r => r.meals.includes("Merienda")));
       const pick = pickRandomRecipe(options, recentMeriendas.slice(-2));
       if (pick) { day.merienda = pick.name; recentMeriendas.push(pick.name); changed = true; }
     }
 
     if (changed) { setDay(cellMk, dayNum, day); daysFilled.push({ mk: cellMk, day: dayNum }); }
+    if (dayHasTernera(day) && !terneraDays.includes(todayN)) terneraDays.push(todayN);
   });
 
   return daysFilled;
@@ -1981,8 +2026,8 @@ document.getElementById("randomMenuBtn").onclick = async () => {
   const ok = confirm(
     "Voy a proponer desayuno, comida de adultos, merienda (excepto fines de semana) y cena para todos los días que ves en pantalla de " + monthLabel(currentMonthKey) +
     " (incluidos los de otros meses que completan la semana) que tengas vacíos, cuidando la variedad " +
-    "(evitando repetir mucho lo mismo), dando más peso a pescado, legumbres y fruta, y variando respecto a " +
-    "lo que coman los niños ese día. No tocaré nada de lo que ya hayas rellenado ni el menú de los niños.\n\n¿Continuar?"
+    "(evitando repetir mucho lo mismo), dando más peso a pescado, legumbres y fruta, variando respecto a " +
+    "lo que coman los niños ese día y con ternera como mucho una vez cada " + TERNERA_MIN_GAP_DAYS + " días. No tocaré nada de lo que ya hayas rellenado ni el menú de los niños.\n\n¿Continuar?"
   );
   if (!ok) return;
   const btn = document.getElementById("randomMenuBtn");
