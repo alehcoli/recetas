@@ -1846,26 +1846,52 @@ function proteinCategoryOf(name) {
   return null;
 }
 function menuEligibleRecipes() {
-  return allRecipes().filter(r => r.inMenu !== false);
+  return allRecipes().filter(r => r.inMenu !== false && !excludedByPauta(r));
 }
 
-// Pauta de la nutricionista: ternera como mucho una vez cada 10 días.
+/* Reglas de la pauta de la nutricionista que aplica "Generar menú aleatorio". */
+
+// Ternera como mucho una vez cada 10 días. La carne picada, las albóndigas o
+// las hamburguesas cuentan como ternera salvo que digan de qué son.
 const TERNERA_RE = /\b(ternera|vaca|vacuno|buey)\b/i;
 const TERNERA_MIN_GAP_DAYS = 10;
-function isTerneraRecipe(r) {
-  return TERNERA_RE.test(r.name) || (r.ingredients || []).some(i => TERNERA_RE.test(i));
+const PICADA_RE = /\b(carne picada|alb[oó]ndigas?|hamburguesas?)(?:\s+de\s+([a-záéíóúñ]+))?/gi;
+const NO_TERNERA_RE = /^(pollo|pavo|cerdo|cordero|conejo|pescado|merluza|bacalao|at[uú]n|salm[oó]n|sepia|calamar|garbanzos?|lentejas?|alubias?|verduras?|quinoa|espinacas?|calabac[ií]n|berenjenas?|setas|champi[ñn]ones)$/i;
+const VEGETAL_RE = /\b(vegetal|veganas?|tofu|soja|seit[aá]n)\b/i;
+function mentionsTernera(text) {
+  if (TERNERA_RE.test(text)) return true;
+  if (VEGETAL_RE.test(text)) return false;
+  const hits = [...text.matchAll(PICADA_RE)];
+  return hits.length > 0 && hits.every(m => !(m[2] && NO_TERNERA_RE.test(m[2])));
 }
+function recipeText(r) { return [r.name].concat(r.ingredients || []).join(" · "); }
+function isTerneraRecipe(r) { return mentionsTernera(recipeText(r)); }
 function isTerneraDish(name) {
   if (!name) return false;
   const r = findRecipeByName(name);
-  return r ? isTerneraRecipe(r) : TERNERA_RE.test(name);
+  return r ? isTerneraRecipe(r) : mentionsTernera(name);
 }
-// Solo lo que se come en casa: la comida del cole de los niños no cuenta.
-function dayHasTernera(day) {
-  return [day.desayuno, day.merienda]
+
+// Fruta: máximo 2 piezas al día. Cuenta cada plato cuyo nombre lleve fruta
+// (la categoría "Fruta" del recetario se usa también para tomate, kétchup…).
+const MAX_FRUTA_DIA = 2;
+const FRUTA_RE = /\b(fruta|frutas|frutos rojos|manzanas?|peras?|pl[aá]tanos?|bananas?|kiwis?|naranjas?|mandarinas?|fresas?|fresones|ar[aá]ndanos|frambuesas|moras|mel[oó]n|sand[ií]a|uvas?|pi[ñn]a|melocot[oó]n|nectarinas?|mango|cerezas|higos?|granadas?|caquis?|ciruelas?|albaricoques?)\b/i;
+function isFruitDish(name) { return !!name && FRUTA_RE.test(name); }
+
+// Nunca pescados con mucho mercurio ni zumos (la fruta, entera).
+const MERCURIO_RE = /\b(pez espada|emperador|panga|at[uú]n rojo|tibur[oó]n|lucio)\b/i;
+const ZUMO_RE = /\bzumos?\b/i;
+function excludedByPauta(r) { return MERCURIO_RE.test(recipeText(r)) || ZUMO_RE.test(r.name); }
+
+// Solo lo que se come en casa (la comida del cole de los niños no cuenta),
+// sin repetir: la cena de niños y adultos suele ser el mismo plato.
+function homeDishes(day) {
+  return [...new Set([day.desayuno, day.merienda]
     .concat(mealItems(day.comidaAdultos), mealItems(day.cena.ninos), mealItems(day.cena.adultos))
-    .some(isTerneraDish);
+    .filter(Boolean))];
 }
+function dayHasTernera(day) { return homeDishes(day).some(isTerneraDish); }
+function fruitCount(day) { return homeDishes(day).filter(isFruitDish).length; }
 // Número de día absoluto (en UTC para que los cambios de hora no descuadren las restas).
 function dayNumberOf(year, month, day) { return Math.round(Date.UTC(year, month, day) / 86400000); }
 function buildMenuPools() {
@@ -1941,8 +1967,9 @@ function generateRandomMonth(monthKey) {
     let changed = false;
     const todayN = dayNumberOf(cell.year, cell.month, dayNum);
     const allowed = list => {
-      const blocked = dayHasTernera(day) || terneraDays.some(n => Math.abs(n - todayN) < TERNERA_MIN_GAP_DAYS);
-      return blocked ? list.filter(r => !isTerneraRecipe(r)) : list;
+      const noTernera = dayHasTernera(day) || terneraDays.some(n => Math.abs(n - todayN) < TERNERA_MIN_GAP_DAYS);
+      const noFruta = fruitCount(day) >= MAX_FRUTA_DIA;
+      return list.filter(r => !(noTernera && isTerneraRecipe(r)) && !(noFruta && isFruitDish(r.name)));
     };
 
     if (!day.desayuno) {
@@ -1965,7 +1992,8 @@ function generateRandomMonth(monthKey) {
       let segundoPool = allowed(pools[chosenCat] || []);
       if (!segundoPool.length) segundoPool = allowed(pools.segundo);
       const segundoR = pickRandomRecipe(segundoPool, recentAdultDishes.slice(-3));
-      // Si el segundo ya es de ternera, que no lo sean también el primero o la guarnición.
+      // Se va guardando plato a plato para que las reglas de ternera y fruta
+      // tengan en cuenta lo ya elegido ese día.
       day.comidaAdultos = { primero: "", segundo: segundoR ? segundoR.name : "", guarnicion: "", postre: "" };
       let primeroR;
       if (chosenCat === "legumbre") {
@@ -1975,7 +2003,8 @@ function generateRandomMonth(monthKey) {
       }
       if (primeroR) day.comidaAdultos.primero = primeroR.name;
       const guarnicionR = pickRandomRecipe(allowed(pools.guarnicion), []);
-      const postreName = Math.random() < 0.85 ? "Fruta de temporada" : "Yogur sabor";
+      if (guarnicionR) day.comidaAdultos.guarnicion = guarnicionR.name;
+      const postreName = (fruitCount(day) < MAX_FRUTA_DIA && Math.random() < 0.85) ? "Fruta de temporada" : "Yogur natural de cabra";
       day.comidaAdultos = {
         primero: primeroR ? primeroR.name : "",
         segundo: (chosenCat !== "legumbre" && segundoR) ? segundoR.name : "",
@@ -2027,7 +2056,8 @@ document.getElementById("randomMenuBtn").onclick = async () => {
     "Voy a proponer desayuno, comida de adultos, merienda (excepto fines de semana) y cena para todos los días que ves en pantalla de " + monthLabel(currentMonthKey) +
     " (incluidos los de otros meses que completan la semana) que tengas vacíos, cuidando la variedad " +
     "(evitando repetir mucho lo mismo), dando más peso a pescado, legumbres y fruta, variando respecto a " +
-    "lo que coman los niños ese día y con ternera como mucho una vez cada " + TERNERA_MIN_GAP_DAYS + " días. No tocaré nada de lo que ya hayas rellenado ni el menú de los niños.\n\n¿Continuar?"
+    "lo que coman los niños ese día y siguiendo la pauta de la nutricionista: ternera como mucho una vez cada " +
+    TERNERA_MIN_GAP_DAYS + " días, como mucho " + MAX_FRUTA_DIA + " piezas de fruta al día, sin zumos y sin pescados con mucho mercurio. No tocaré nada de lo que ya hayas rellenado ni el menú de los niños.\n\n¿Continuar?"
   );
   if (!ok) return;
   const btn = document.getElementById("randomMenuBtn");

@@ -74,10 +74,14 @@ queso fresco de cabra con nueces, yogur de cabra.
    cúrcuma+jengibre, cúrcuma+comino, romero, mostaza, tahini, yogur…).
 
 ### En la app
-"Generar menú aleatorio" (`generateRandomMonth` en `index.html`) aplica ya
-la regla de ternera como mucho una vez cada 10 días
-(`TERNERA_MIN_GAP_DAYS`). El resto de reglas de la pauta no están en el
-código.
+"Generar menú aleatorio" (`generateRandomMonth` en `index.html`) aplica
+estas reglas de la pauta (bloque "Reglas de la pauta de la nutricionista"):
+ternera como mucho una vez cada 10 días (`TERNERA_MIN_GAP_DAYS`; incluye
+carne picada/albóndigas/hamburguesas sin especificar), máximo 2 piezas de
+fruta al día (`MAX_FRUTA_DIA`), sin zumos y sin pescados con mucho mercurio
+(`excludedByPauta`). La lista "a evitar" (gluten, lácteos de vaca, azúcar…)
+y la regla del plato NO se aplican a propósito: la familia no quiere que
+todas las recetas tengan que cumplir la pauta.
 
 ### Recetario
 Las recetas completas de esta pauta (lentejas estofadas, garbanzos con
