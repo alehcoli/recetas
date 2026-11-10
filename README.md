@@ -47,6 +47,19 @@ index.html  ──fetch/POST──>  Google Apps Script (Web App)  ──lee/esc
   escribiéndola a mano en cualquier día. Las recetas que no tengan este
   campo (las que ya tenías antes de este cambio) se consideran incluidas
   por defecto.
+- "🎲 Generar menú aleatorio" sigue estas reglas de la pauta de la
+  nutricionista (la comida del cole de los niños nunca cuenta):
+  - **Ternera como mucho una vez cada 10 días.** Cuenta cualquier receta con
+    "ternera", "vaca", "vacuno" o "buey" en el nombre o los ingredientes, y
+    la carne picada, albóndigas o hamburguesas que no digan de qué son
+    ("albóndigas de pollo" o "hamburguesas de garbanzos" no cuentan).
+    También cuenta la que hayáis escrito a mano en cualquier comida de casa,
+    antes o después, aunque caiga en el mes de al lado.
+  - **Como mucho 2 piezas de fruta al día**, contando cada plato cuyo
+    nombre lleve fruta ("Fruta de temporada", "Yogur con fresas"…). Si ya
+    hay dos, el postre pasa a ser "Yogur natural de cabra".
+  - **Nunca zumos** (recetas cuyo nombre es un zumo) **ni pescados con mucho
+    mercurio** (pez espada/emperador, panga, atún rojo, tiburón, lucio).
 - Cada receta tiene también un campo **Público** (niños / adultos / ambos),
   editable desde el mismo modal de añadir/editar receta. Las recetas sin
   este campo (las que ya tenías) se consideran válidas para ambos.
@@ -91,6 +104,15 @@ hay que pegarlo en el editor de verdad y publicar una nueva versión:
 3. Guarda. Implementar → Gestionar implementaciones → editar (lápiz) →
    **Nueva versión** → Implementar (no "nueva implementación", o la URL
    cambiaría y habría que actualizar `SHEET_API_URL` en `index.html`).
+
+**Una sola vez, tras publicar la versión que arregla los duplicados de
+`MenuDias`**: hasta ese arreglo, cada guardado de un día añadía una fila
+nueva en vez de actualizar la existente (Sheets convierte `"2026-10"` en una
+fecha y la búsqueda de la fila nunca coincidía). En el editor de Apps Script,
+elige `limpiarDuplicadosMenuDias` en el desplegable de funciones y pulsa
+▶ Ejecutar. Deja una sola fila por día —la última, que es la que la app ya
+muestra— y antes guarda una copia de la pestaña. Si se ejecuta otra vez, no
+hace nada.
 
 **Solo la primera vez**, para que funcione "✨ Extraer menú con IA":
 

@@ -109,6 +109,48 @@ function verificarConfiguracion() {
   Logger.log("✅ Todas las hojas están listas. Ya puedes crear una nueva versión del despliegue si has cambiado el código.");
 }
 
+/**
+ * Ejecútala UNA vez a mano desde el editor (desplegable de funciones → ▶
+ * Ejecutar). Hasta que se corrigió keyToString_, cada guardado de un día
+ * añadía una fila nueva en MenuDias en vez de actualizar la existente.
+ * Esto deja una sola fila por día —la última, que es la que la app ya está
+ * mostrando, así que en la app no cambia nada— y guarda antes una copia de
+ * la pestaña por si acaso.
+ */
+function limpiarDuplicadosMenuDias() {
+  const cfg = SHEETS.days;
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = getOrCreateSheet_("days");
+  const values = sheet.getDataRange().getValues();
+  if (values.length < 2) { Logger.log("MenuDias está vacía, no hay nada que limpiar."); return; }
+  const headers = values[0];
+  const mkIdx = headers.indexOf("monthKey"), dIdx = headers.indexOf("day");
+
+  const lastByKey = {};
+  let dataRows = 0;
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+    if (!row.some(c => c !== "" && c !== null)) continue;
+    dataRows++;
+    row[mkIdx] = keyToString_(row[mkIdx]);
+    lastByKey[row[mkIdx] + "|" + Number(row[dIdx])] = row;
+  }
+  const kept = Object.keys(lastByKey).map(k => lastByKey[k]).sort((a, b) =>
+    a[mkIdx] < b[mkIdx] ? -1 : a[mkIdx] > b[mkIdx] ? 1 : Number(a[dIdx]) - Number(b[dIdx]));
+
+  if (kept.length === dataRows) { Logger.log("No hay filas repetidas en MenuDias (" + dataRows + " filas)."); return; }
+
+  const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm");
+  sheet.copyTo(ss).setName(cfg.name + " (copia " + stamp + ")");
+
+  sheet.getRange(2, 1, values.length - 1, headers.length).clearContent();
+  // Como texto, para que Sheets no vuelva a convertir "2026-10" en fecha.
+  sheet.getRange(2, mkIdx + 1, sheet.getMaxRows() - 1, 1).setNumberFormat("@");
+  sheet.getRange(2, 1, kept.length, headers.length).setValues(kept);
+
+  Logger.log("✅ MenuDias: " + dataRows + " filas → " + kept.length + " (una por día). Copia de seguridad en la pestaña \"" + cfg.name + " (copia " + stamp + ")\".");
+}
+
 function getOrCreateSheet_(key) {
   const cfg = SHEETS[key];
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -136,11 +178,21 @@ function getOrCreateSheet_(key) {
   return sheet;
 }
 
+// Sheets convierte por su cuenta un texto como "2026-10" en una fecha al
+// guardarlo, así que una celda de monthKey puede volver como Date. Se pasa
+// siempre a "YYYY-MM" antes de comparar o devolver claves.
+function keyToString_(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, Session.getScriptTimeZone(), "yyyy-MM");
+  return String(v);
+}
+
 function rowToObj_(cfg, headers, row) {
   const obj = {};
   headers.forEach((h, i) => {
     let v = row[i];
-    if (cfg.arrayFields.indexOf(h) !== -1) {
+    if (h === "monthKey") {
+      v = keyToString_(v);
+    } else if (cfg.arrayFields.indexOf(h) !== -1) {
       try { v = v ? JSON.parse(v) : null; } catch (e) { v = null; }
       if (!v || !v.length) {
         const def = (cfg.arrayFieldsDefault || {})[h];
@@ -185,10 +237,12 @@ function jsonOut_(obj) {
 function findRowIndexByKey_(sheet, headers, keyCols, keyVals) {
   const values = sheet.getDataRange().getValues();
   const idxs = keyCols.map(k => headers.indexOf(k));
-  for (let i = 1; i < values.length; i++) {
+  // De abajo arriba: si hay filas repetidas para la misma clave, la app usa
+  // la última, así que es esa la que hay que actualizar.
+  for (let i = values.length - 1; i >= 1; i--) {
     let match = true;
     for (let j = 0; j < idxs.length; j++) {
-      if (String(values[i][idxs[j]]) !== String(keyVals[j])) { match = false; break; }
+      if (keyToString_(values[i][idxs[j]]) !== String(keyVals[j])) { match = false; break; }
     }
     if (match) return i; // índice 0-based dentro de "values" (fila real = i+1)
   }
@@ -288,7 +342,7 @@ function handleDay_(payload) {
     const mkIdx = headers.indexOf("monthKey"), dIdx = headers.indexOf("day");
     const existing = {};
     for (let i = 1; i < values.length; i++) {
-      existing[values[i][mkIdx] + "|" + values[i][dIdx]] = i + 1;
+      existing[keyToString_(values[i][mkIdx]) + "|" + values[i][dIdx]] = i + 1;
     }
     const toAppend = [];
     (payload.days || []).forEach(day => {
@@ -312,7 +366,7 @@ function handleDay_(payload) {
       const headers = values[0];
       const mkIdx = headers.indexOf("monthKey");
       for (let i = values.length - 1; i >= 1; i--) {
-        if (String(values[i][mkIdx]) === String(payload.monthKey)) sheet.deleteRow(i + 1);
+        if (keyToString_(values[i][mkIdx]) === String(payload.monthKey)) sheet.deleteRow(i + 1);
       }
     }
     return jsonOut_({ ok: true });
@@ -595,7 +649,7 @@ function handleImportMenuImage_(payload) {
   const mkIdx = headers.indexOf("monthKey"), dIdx = headers.indexOf("day");
   const existingRows = {};
   for (let i = 1; i < values.length; i++) {
-    if (String(values[i][mkIdx]) === String(monthKey)) {
+    if (keyToString_(values[i][mkIdx]) === String(monthKey)) {
       existingRows[Number(values[i][dIdx])] = rowToObj_(cfg, headers, values[i]);
     }
   }
